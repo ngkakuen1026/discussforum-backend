@@ -1,6 +1,7 @@
 import express, { Application, Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from "cookie-parser";
+import authRoutes from "./routes/authRoutes";
 
 dotenv.config();
 
@@ -11,6 +12,12 @@ const PORT = process.env.PORT;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Base API path
+const API_BASE_PATH = "/api/v1";
+
+// Routes
+app.use(`${API_BASE_PATH}/auth`, authRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).send({ message: "Server is healthy!!!"});
