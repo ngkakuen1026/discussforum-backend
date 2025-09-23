@@ -176,7 +176,9 @@ const refreshUserToken = async (req: Request, res: Response): Promise<any> => {
                 return res.status(403).json({ message: "Invalid refresh token" });
             }
 
-            const accessToken = generateAccessToken({ id: user.id, username: user.username, email: user.email, is_admin: user.is_admin });
+
+            const { id, username: userUsername, email: userEmail, is_admin: isAdmin } = user;
+            const accessToken = generateAccessToken({ id, userUsername, userEmail, isAdmin });
 
             res.cookie("accessToken", accessToken, {
                 httpOnly: true,

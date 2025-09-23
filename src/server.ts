@@ -2,6 +2,7 @@ import express, { Application, Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes";
+import userRoutes from "./routes/userRoutes";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ const API_BASE_PATH = "/api/v1";
 
 // Routes
 app.use(`${API_BASE_PATH}/auth`, authRoutes);
+app.use(`${API_BASE_PATH}/users`, userRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).send({ message: "Server is healthy!!!"});
