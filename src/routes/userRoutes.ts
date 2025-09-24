@@ -1,15 +1,18 @@
 import express from 'express';
-import { deleteAccount, editProfile, viewUserProfile } from '../controllers/userControllers';
+import { deleteAccount, editPassword, editProfile, viewProfile, viewUserProfile } from '../controllers/userControllers';
 import { isAuthenticated } from '../middleware/auth';
 
 const router = express.Router();
 
 // Public Routes
-router.get("/profile/:id", viewUserProfile);
+router.get("/user-profile/:id", viewUserProfile);
 
 // Protected Routes (Registered Users)
-router.patch("/profile/:id", isAuthenticated, editProfile);
+router.get("/profile/me", isAuthenticated, viewProfile);
+router.patch("/profile/me", isAuthenticated, editProfile);
+router.patch("/profile/password", isAuthenticated, editPassword);
 router.delete("/profile/:id", isAuthenticated, deleteAccount);
-
+router.post("/me/profile-image", isAuthenticated);
+router.delete("/me/profile-image/delete", isAuthenticated);
 
 export default router;

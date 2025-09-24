@@ -1,6 +1,7 @@
-import bcrypt from 'bcrypt';
 import pool from '../db/db';
+import bcrypt from "bcrypt";
 import { Request, Response } from 'express';
+import { EditPasswordRequestBody, EditProfileRequestBody } from '../types/userTypes';
 
 // View User Public Profile
 const viewUserProfile = async (req: Request, res: Response) => {
@@ -21,8 +22,27 @@ const viewUserProfile = async (req: Request, res: Response) => {
     }
 }
 
+// View Own Profile (Registered Users)
+const viewProfile = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+
+        if (result.rows.length === 0) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        const { password_hash, ...safeUser } = result.rows[0];
+        res.status(200).json({ user: safeUser });
+    } catch (error) {
+        console.error("Error in getUserProfile:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
 // Edit Own Profile (Registered Users)
-const editProfile = async (req: Request, res: Response) => {
+const editProfile = async (req: Request<{}, {}, EditProfileRequestBody>, res: Response) => {
     const userId = req.user!.id;
 
     try {
@@ -39,13 +59,12 @@ const editProfile = async (req: Request, res: Response) => {
             last_name = user.last_name,
             phone = user.phone,
             gender = user.gender,
-            bio = user.bio,
-            profile_image = user.profile_image
+            bio = user.bio
         } = req.body;
 
         const editResult = await pool.query(
-            "UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4, phone = $5, gender = $6, bio = $7, profile_image = $8 WHERE id = $9 RETURNING *",
-            [username, email, first_name, last_name, phone, gender, bio, profile_image, userId]
+            "UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4, phone = $5, gender = $6, bio = $7 WHERE id = $8 RETURNING *",
+            [username, email, first_name, last_name, phone, gender, bio, userId]
         );
 
         res.status(200).json({ user: editResult.rows[0] });
@@ -54,6 +73,41 @@ const editProfile = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 }
+
+// Edit Own Password (Registered Users)
+const editPassword = async (req: Request<{}, {}, EditPasswordRequestBody>, res: Response) => {
+    try {
+        const userId = req.user!.id;
+        const { oldPassword, newPassword } = req.body;
+
+        const current = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (current.rows.length === 0) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        const user = current.rows[0];
+
+        const isPasswordMatch = await bcrypt.compare(oldPassword, user.password_hash);
+        if (!isPasswordMatch) {
+            res.status(400).json({ message: "Old password is incorrect" });
+            return;
+        }
+
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        await pool.query(
+            "UPDATE users SET password_hash = $1 WHERE id = $2",
+            [hashedPassword, userId]
+        );
+
+        res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
 
 // Delete Own Account (Registered Users)
 const deleteAccount = async (req: Request, res: Response) => {
@@ -74,4 +128,4 @@ const deleteAccount = async (req: Request, res: Response) => {
     }
 };
 
-export { viewUserProfile, editProfile, deleteAccount };
+export { viewUserProfile, viewProfile, editProfile, editPassword, deleteAccount };
