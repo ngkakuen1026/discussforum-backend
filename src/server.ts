@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
+import adminRoutes from "./routes/adminRoutes";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(cookieParser());
 const API_BASE_PATH = "/api/v1";
 
 // Routes
+app.use(`${API_BASE_PATH}/admin`, adminRoutes)
 app.use(`${API_BASE_PATH}/auth`, authRoutes);
 app.use(`${API_BASE_PATH}/users`, userRoutes);
 

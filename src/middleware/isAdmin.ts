@@ -8,7 +8,7 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
         return;
     }
 
-    if (!user?.is_admin) {
+    if (!user.isAdmin) {
         res.status(403).json({ message: "Forbidden, No access right" });
         return;
     }
