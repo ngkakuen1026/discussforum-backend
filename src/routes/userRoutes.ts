@@ -1,6 +1,7 @@
 import express from 'express';
-import { deleteAccount, editPassword, editProfile, viewProfile, viewUserProfile } from '../controllers/userControllers';
+import { deleteAccount, deleteProfileImage, editPassword, editProfile, uploadProfileImage, viewProfile, viewUserProfile } from '../controllers/userControllers';
 import { isAuthenticated } from '../middleware/auth';
+import upload from '../middleware/multer';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ router.get("/profile/me", isAuthenticated, viewProfile);
 router.patch("/profile/me", isAuthenticated, editProfile);
 router.patch("/profile/password", isAuthenticated, editPassword);
 router.delete("/profile/:id", isAuthenticated, deleteAccount);
-router.post("/me/profile-image", isAuthenticated);
-router.delete("/me/profile-image/delete", isAuthenticated);
+router.post("/me/profile-image", isAuthenticated, upload.single("profile_image"), uploadProfileImage);
+router.delete("/me/profile-image", isAuthenticated, deleteProfileImage);
 
 export default router;
