@@ -28,7 +28,7 @@ const viewUserProfile = async (req: Request, res: Response) => {
 // View Own Profile (Registered Users)
 const viewProfile = async (req: Request, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.user!.id;
         const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
 
         if (result.rows.length === 0) {
