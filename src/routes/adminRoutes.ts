@@ -2,7 +2,11 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
+<<<<<<< HEAD
 import { deleteUserAccount, deleteUserPost, deleteUserProfileImage, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
+=======
+import { deleteUserAccount, deleteUserProfileImage, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
+>>>>>>> 7ac20133889df65b9429d1f7b2bce6f0552fbdfb
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 
 const router = express.Router();
@@ -20,6 +24,10 @@ router.delete("/users/user/profile/:id", isAuthenticated, isAdmin, deleteUserAcc
 router.get("/posts/all-posts", isAuthenticated, isAdmin, viewAllPosts);
 router.get("/posts/post/:id", isAuthenticated, isAdmin, viewPost);
 router.get("/posts/search-posts", isAuthenticated, isAdmin, searchPosts);
+<<<<<<< HEAD
 router.delete("/posts/post/:id", isAuthenticated, isAdmin, deleteUserPost);
+=======
+router.delete("/posts/post/:id", isAuthenticated, isAdmin, deleteUserAccount);
+>>>>>>> 7ac20133889df65b9429d1f7b2bce6f0552fbdfb
 
 export default router;

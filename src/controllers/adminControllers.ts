@@ -35,8 +35,8 @@ const searchUsers = async (req: Request, res: Response) => {
     }
 }
 
-const viewUserProfile = async (req: Request<{ id: string }, {}, {}>, res: Response) => {
-    const userId = req.params.id;
+const viewUserProfile = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
+    const userId = req.params.userId;
 
     try {
         const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
@@ -53,8 +53,8 @@ const viewUserProfile = async (req: Request<{ id: string }, {}, {}>, res: Respon
     }
 }
 
-const editUserProfile = async (req: Request<{ id: string }, {}, EditProfileRequestBody>, res: Response) => {
-    const userId = req.params.id;
+const editUserProfile = async (req: Request<{ userId: string }, {}, EditProfileRequestBody>, res: Response) => {
+    const userId = req.params.userId;
 
     try {
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
@@ -87,8 +87,8 @@ const editUserProfile = async (req: Request<{ id: string }, {}, EditProfileReque
     }
 };
 
-const uploadUserProfileImage = async (req: Request<{ id: string }, {}, {}>, res: Response) => {
-    const userId = req.params.id;
+const uploadUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
+    const userId = req.params.userId;
 
     try {
         if (!req.file) {
@@ -140,8 +140,8 @@ const uploadUserProfileImage = async (req: Request<{ id: string }, {}, {}>, res:
     }
 };
 
-const deleteUserProfileImage = async (req: Request<{ id: string }, {}, {}>, res: Response) => {
-    const userId = req.params.id;
+const deleteUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
+    const userId = req.params.userId;
 
     try {
         const userResult = await pool.query(
@@ -179,8 +179,8 @@ const deleteUserProfileImage = async (req: Request<{ id: string }, {}, {}>, res:
 
 }
 
-const deleteUserAccount = async (req: Request<{ id: string }, {}, {}>, res: Response) => {
-    const userId = req.params.id;
+const deleteUserAccount = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
+    const userId = req.params.userId;
 
     try {
         const userResult = await pool.query("SELECT profile_image FROM users WHERE id = $1", [userId]);
@@ -210,8 +210,8 @@ const deleteUserAccount = async (req: Request<{ id: string }, {}, {}>, res: Resp
 };
 
 //Posts db table related controllers
-const deleteUserPost = async (req: Request<{ id: string }, {}, {}>, res: Response) => {
-    const postId = req.params.id;
+const deleteUserPost = async (req: Request<{ postId: string }, {}, {}>, res: Response) => {
+    const postId = req.params.postId;
 
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
