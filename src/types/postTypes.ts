@@ -3,3 +3,7 @@ export interface CreatePostRequestBody {
     content: string;
     categoryId?: number;
 }
+
+export interface VoteRequestBody {
+    voteType: number;
+}

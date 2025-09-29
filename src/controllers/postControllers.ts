@@ -1,5 +1,4 @@
 import pool from '../db/db';
-import bcrypt from "bcrypt";
 import { Request, Response } from 'express';
 import { CreatePostRequestBody } from '../types/postTypes';
 
@@ -15,8 +14,8 @@ const viewAllPosts = async (req: Request, res: Response) => {
 }
 
 // View Single Post
-const viewPost = async (req: Request, res: Response) => {
-    const postId = req.params.id;
+const viewPost = async (req: Request<{postId: string}, {}, {}>, res: Response) => {
+    const postId = req.params.postId;
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
         if (postResult.rows.length === 0) {
