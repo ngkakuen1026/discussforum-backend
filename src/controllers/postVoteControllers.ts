@@ -7,6 +7,13 @@ const getVotes = async (req: Request<{postId: string}>, res: Response) => {
     const postId = req.params.postId;
 
     try {
+        const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
+        
+        if (postResult.rows.length === 0) {
+            res.status(404).json({ message: "Post not found" });
+            return;
+        }
+
         const votesResult = await pool.query("SELECT vote_type, COUNT(*) as count FROM post_votes WHERE post_id = $1 GROUP BY vote_type", [postId]);
         res.status(200).json({ votes: votesResult.rows });
     } catch (error) {
@@ -22,10 +29,18 @@ const votePost = async (req: Request<{postId: string}, {}, VoteRequestBody>, res
     const voteType = req.body.voteType;
 
     if (![1, -1].includes(voteType)) {
-        return res.status(400).json({ message: "Invalid vote type. Use 1 for upvote and -1 for downvote." });
+        res.status(400).json({ message: "Invalid vote type. Use 1 for upvote and -1 for downvote." });
+        return;
     }
 
     try {
+        const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
+
+        if (postResult.rows.length === 0) {
+            res.status(404).json({ message: "Post not found" });
+            return;
+        }
+
         const existingVote = await pool.query("SELECT * FROM post_votes WHERE post_id = $1 AND user_id = $2", [postId, userId]);
 
         if (existingVote.rows.length > 0) {

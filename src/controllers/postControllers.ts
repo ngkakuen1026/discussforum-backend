@@ -71,7 +71,7 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
         }
 
         const newPost = await pool.query(
-            "INSERT INTO posts (user_id, title, content, category_id, created_at) VALUES ($1, $2, $3, $4,NOW()) RETURNING *",
+            "INSERT INTO posts (user_id, title, content, category_id, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *",
             [userId, title, content, categoryId]
         );
 
