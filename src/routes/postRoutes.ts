@@ -1,7 +1,7 @@
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { createPost, deletePost, searchPosts, viewAllOwnPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
-import { getVotes } from '../controllers/postVoteControllers';
+import { getVotes, votePost } from '../controllers/postVoteControllers';
 
 const router = express.Router();
 
@@ -19,6 +19,6 @@ router.post("/post", isAuthenticated, createPost);
 router.delete("/post/:postId", isAuthenticated, deletePost);
 
 // Protected Routes for post votes (Registered Users)
-router.post("/votes/:postId", isAuthenticated, getVotes);
+router.post("/votes/:postId", isAuthenticated, votePost);
 
 export default router;

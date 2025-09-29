@@ -2,8 +2,9 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { deleteUserAccount, deleteUserPost, deleteUserProfileImage, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
+import { deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
+import { viewComments } from '../controllers/commentControllers';
 
 const router = express.Router();
 
@@ -21,5 +22,9 @@ router.get("/posts/all-posts", isAuthenticated, isAdmin, viewAllPosts);
 router.get("/posts/post/:id", isAuthenticated, isAdmin, viewPost);
 router.get("/posts/search-posts", isAuthenticated, isAdmin, searchPosts);
 router.delete("/posts/post/:id", isAuthenticated, isAdmin, deleteUserPost);
+
+// Comment Routes (Admin access only)
+router.get("/comments/all-comments", isAuthenticated, isAdmin, viewComments);
+router.delete("/comments/comment/:id", isAuthenticated, isAdmin, deleteUserComment);
 
 export default router;

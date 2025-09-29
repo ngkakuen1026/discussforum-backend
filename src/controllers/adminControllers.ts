@@ -230,4 +230,25 @@ const deleteUserPost = async (req: Request<{ postId: string }, {}, {}>, res: Res
     }
 }
 
-export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost }
+//Comments db table related controllers
+const deleteUserComment = async (req: Request<{ commentId: string }, {}, {}>, res: Response) => {
+    const commentId = req.params.commentId;
+
+    try {
+        const commentResult = await pool.query("SELECT * FROM comments WHERE id = $1", [commentId]);
+
+        if (commentResult.rowCount === 0) {
+            res.status(404).json({ message: "Comment not found" });
+            return;
+        }
+
+        await pool.query("DELETE FROM comments WHERE id = $1", [commentId]);
+
+        res.status(200).json({ message: "Comment deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting comment:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost, deleteUserComment }
