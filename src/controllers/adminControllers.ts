@@ -1,13 +1,11 @@
 import pool from '../db/db';
 import { Request, Response } from 'express';
-import { EditPasswordRequestBody, EditProfileRequestBody } from '../types/userTypes';
+import { EditProfileRequestBody } from '../types/userTypes';
 import cloudinary from "../config/cloudinary";
 import fs from "fs";
-import bcrypt from 'bcrypt';
 import { extractPublicId } from "../utils/extractCloudinaryUrl";
 
-const saltRounds = 10;
-
+//Users db table related controllers
 const viewAllUsers = async (req: Request, res: Response) => {
     try {
         const result = await pool.query("SELECT * FROM users");
@@ -28,8 +26,8 @@ const searchUsers = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await pool.query(`SELECT * FROM users WHERE users.username ILIKE $1`, [`%${query}%`]);
-        const users = result.rows.map(({ password_hash, ...rest }) => rest);
+        const userResult = await pool.query(`SELECT * FROM users WHERE users.username ILIKE $1`, [`%${query}%`]);
+        const users = userResult.rows.map(({ password_hash, ...rest }) => rest);
         res.status(200).json({ users });
     } catch (error) {
         console.error(error);
@@ -186,14 +184,14 @@ const deleteUserAccount = async (req: Request<{ id: string }, {}, {}>, res: Resp
 
     try {
         const userResult = await pool.query("SELECT profile_image FROM users WHERE id = $1", [userId]);
-        
+
         if (userResult.rowCount === 0) {
             res.status(404).json({ message: "User not found" });
             return;
         }
 
         const publicId = extractPublicId(userResult.rows[0].profile_image);
-        
+
         if (publicId) {
             try {
                 await cloudinary.uploader.destroy(publicId);
@@ -211,4 +209,25 @@ const deleteUserAccount = async (req: Request<{ id: string }, {}, {}>, res: Resp
     }
 };
 
-export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount}
+//Posts db table related controllers
+const deleteUserPost = async (req: Request<{ id: string }, {}, {}>, res: Response) => {
+    const postId = req.params.id;
+
+    try {
+        const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
+
+        if (postResult.rowCount === 0) {
+            res.status(404).json({ message: "Post not found" });
+            return;
+        }
+
+        await pool.query("DELETE FROM posts WHERE id = $1", [postId]);
+
+        res.status(200).json({ message: "Post deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting post:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost }

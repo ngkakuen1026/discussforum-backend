@@ -1,7 +1,7 @@
 import pool from '../db/db';
 import bcrypt from "bcrypt";
 import { Request, Response } from 'express';
-import { CreatePostRequestBody, EditPostRequestBody } from '../types/postTypes';
+import { CreatePostRequestBody } from '../types/postTypes';
 
 // View All Posts
 const viewAllPosts = async (req: Request, res: Response) => {
@@ -86,42 +86,6 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
     }
 };
 
-// Update Own Post (Registered Users)
-const updatePost = async (req: Request<{ postId: string }, {}, EditPostRequestBody>, res: Response) => {
-    const userId = req.user!.id;
-    const postId = req.params.postId;
-
-    try {
-        const postResult = await pool.query("SELECT * FROM posts WHERE id = $1 AND user_id = $2", [postId, userId]);
-        if (postResult.rows.length === 0) {
-            res.status(404).json({ message: "Post not found" });
-            return;
-        }
-        const post = postResult.rows[0];
-
-        const {
-            title = post.title,
-            content = post.content,
-            categoryId = post.category_id
-        } = req.body;
-
-        const updateResult = await pool.query(
-            "UPDATE posts SET title = $1, content = $2, category_id = $3, updated_at = NOW() WHERE id = $4 RETURNING *",
-            [title, content, categoryId, postId]
-        );
-
-        const updatedPost = updateResult.rows[0];
-
-        res.status(200).json({
-            message: "Post updated successfully",
-            post: updatedPost,
-        });
-    } catch (error) {
-        console.error("Error updating post:", error);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
-}
-
 // Delete Own Post (Registered Users)
 const deletePost = async (req: Request<{ postId: string }, {}, {}>, res: Response) => {
     const userId = req.user!.id;
@@ -142,4 +106,4 @@ const deletePost = async (req: Request<{ postId: string }, {}, {}>, res: Respons
     }
 }
 
-export { viewAllPosts, viewPost, searchPosts, viewAllOwnPosts, createPost, updatePost, deletePost };
+export { viewAllPosts, viewPost, searchPosts, viewAllOwnPosts, createPost, deletePost };
