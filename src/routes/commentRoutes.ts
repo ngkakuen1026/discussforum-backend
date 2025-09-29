@@ -1,7 +1,7 @@
 import express from 'express';
 import { createComment, viewComments } from '../controllers/commentControllers';
 import { isAuthenticated } from '../middleware/auth';
-import { voteComment } from '../controllers/commentVoteControllers';
+import { getVotes, voteComment } from '../controllers/commentVoteControllers';
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ const router = express.Router();
 router.get("/:postId/all-comments", viewComments);
 
 // Public Route for comment votes
-router.get("/votes/:commentId", viewComments);
+router.get("/votes/:commentId", getVotes);
 
 // Protected Routes for comment (Registered Users)
 router.post("/:postId/comment", isAuthenticated, createComment);
