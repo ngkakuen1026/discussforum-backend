@@ -1,10 +1,7 @@
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { createPost, deletePost, searchPosts, viewAllOwnPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
-<<<<<<< HEAD
 import { getVotes } from '../controllers/postVoteControllers';
-=======
->>>>>>> 7ac20133889df65b9429d1f7b2bce6f0552fbdfb
 
 const router = express.Router();
 
