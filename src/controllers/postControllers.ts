@@ -14,7 +14,7 @@ const viewAllPosts = async (req: Request, res: Response) => {
 }
 
 // View Single Post
-const viewPost = async (req: Request<{postId: string}, {}, {}>, res: Response) => {
+const viewPost = async (req: Request<{ postId: string }, {}, {}>, res: Response) => {
     const postId = req.params.postId;
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
@@ -45,6 +45,19 @@ const searchPosts = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Internal server error" });
     }
 }
+
+// View All Posts by Category
+const viewPostsByCategory = async (req: Request<{ categoryId: string }, {}, {}>, res: Response) => {
+    const categoryId = req.params.categoryId;
+
+    try {
+        const result = await pool.query("SELECT * FROM posts WHERE category_id = $1", [categoryId]);
+        res.status(200).json({posts: result.rows});
+    } catch (error) {
+        console.error("Error fetching posts by category:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
 
 // View All Own Posts (Registered Users)
 const viewAllOwnPosts = async (req: Request, res: Response) => {
@@ -105,4 +118,4 @@ const deletePost = async (req: Request<{ postId: string }, {}, {}>, res: Respons
     }
 }
 
-export { viewAllPosts, viewPost, searchPosts, viewAllOwnPosts, createPost, deletePost };
+export { viewAllPosts, viewPost, searchPosts, viewPostsByCategory, viewAllOwnPosts, createPost, deletePost };

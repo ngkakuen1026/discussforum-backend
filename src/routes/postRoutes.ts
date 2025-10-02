@@ -1,6 +1,6 @@
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
-import { createPost, deletePost, searchPosts, viewAllOwnPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
+import { createPost, deletePost, searchPosts, viewAllOwnPosts, viewAllPosts, viewPost, viewPostsByCategory } from '../controllers/postControllers';
 import { getVotes, votePost } from '../controllers/postVoteControllers';
 
 const router = express.Router();
@@ -9,6 +9,7 @@ const router = express.Router();
 router.get("/all-posts", viewAllPosts);
 router.get("/post/:postId", viewPost);
 router.get("/search", searchPosts);
+router.get("/all-posts/:categoryId", viewPostsByCategory)
 
 // Public Route for post votes
 router.get("/votes/:postId", getVotes); 

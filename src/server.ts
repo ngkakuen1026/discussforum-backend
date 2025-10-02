@@ -6,6 +6,7 @@ import userRoutes from "./routes/userRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import postRoutes from "./routes/postRoutes";
 import commentRoutes from "./routes/commentRoutes";
+import categoriesRoutes from "./routes/categoryRoutes";
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use(`${API_BASE_PATH}/auth`, authRoutes);
 app.use(`${API_BASE_PATH}/users`, userRoutes);
 app.use(`${API_BASE_PATH}/posts`, postRoutes);
 app.use(`${API_BASE_PATH}/comments`, commentRoutes);
+app.use(`${API_BASE_PATH}/categories`, categoriesRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).send({ message: "Server is healthy!!!"});
