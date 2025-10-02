@@ -4,6 +4,7 @@ import { EditProfileRequestBody } from '../types/userTypes';
 import cloudinary from "../config/cloudinary";
 import fs from "fs";
 import { extractPublicId } from "../utils/extractCloudinaryUrl";
+import { addCategoryRequestBody, editCategoryRequestBody } from '../types/categoryTypes';
 
 //Users db table related controllers
 const viewAllUsers = async (req: Request, res: Response) => {
@@ -251,4 +252,102 @@ const deleteUserComment = async (req: Request<{ commentId: string }, {}, {}>, re
     }
 }
 
-export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost, deleteUserComment }
+//Categories db table related controllers
+const addCategory = async (req: Request<{}, {}, addCategoryRequestBody>, res: Response) => {
+    const { name, parent_id } = req.body; 
+
+    if (!name || name.length < 2) { 
+        res.status(400).json({ message: "Category name is required and must be at least 2 characters long" });
+        return;
+    }
+
+    if (parent_id) {
+        const parentResult = await pool.query("SELECT * FROM parent_categories WHERE id = $1", [parent_id]);
+        if (parentResult.rowCount === 0) {
+            return res.status(400).json({ message: "Invalid parent category ID" });
+        }
+    }
+
+    try {
+        const categoryResult = await pool.query("SELECT * FROM categories WHERE name ILIKE $1", [name]);
+        if (categoryResult.rows.length > 0) {
+            res.status(409).json({ message: "Category already exists" });
+            return;
+        }
+
+        const result = await pool.query(
+            "INSERT INTO categories (name, parent_id, created_at) VALUES ($1, $2, NOW()) RETURNING *",
+            [name, parent_id]
+        );
+
+        res.status(201).json({ message: "Category added successfully", category: result.rows[0] });
+    } catch (error) {
+        console.error("Error adding category:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+const editCategory = async (req: Request<{ categoryId: string }, {}, editCategoryRequestBody>, res: Response) => {
+    const categoryId = req.params.categoryId;
+    const { name, parent_id } = req.body; 
+
+    if (!name || name.length < 2) { 
+        res.status(400).json({ message: "Category name is required and must be at least 2 characters long" });
+        return;
+    }
+
+    if (parent_id) {
+        const parentResult = await pool.query("SELECT * FROM parent_categories WHERE id = $1", [parent_id]);
+        if (parentResult.rowCount === 0) {
+            return res.status(400).json({ message: "Invalid parent category ID" });
+        }
+    }
+
+    try {
+        const categoryResult = await pool.query("SELECT * FROM categories WHERE id = $1", [categoryId]);
+        if (categoryResult.rowCount === 0) {
+            res.status(404).json({ message: "Category not found" });
+            return;
+        }
+
+        const duplicateCheck = await pool.query("SELECT * FROM categories WHERE name ILIKE $1 AND id != $2", [name, categoryId]);
+        if (duplicateCheck.rows.length > 0) {
+            res.status(409).json({ message: "Another category with the same name already exists" });
+            return;
+        }
+
+        await pool.query("UPDATE categories SET name = $1, parent_id = $2 WHERE id = $3", [name, parent_id, categoryId]);
+        res.status(200).json({
+            message: `Category updated successfully`,
+            category: { id: categoryId, newName: name, newParentId: parent_id }
+        });
+    } catch (error) {
+        console.error("Error updating category:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+const deleteCategory = async (req: Request<{ categoryId: string }, {}, {}>, res: Response) => {
+    const categoryId = req.params.categoryId;
+
+    try {
+        const categoryResult = await pool.query("SELECT * FROM categories WHERE id = $1", [categoryId]);
+        if (categoryResult.rowCount === 0) {
+            res.status(404).json({ message: "Category not found" });
+            return;
+        }
+
+        const subcategories = await pool.query("SELECT * FROM categories WHERE parent_id = $1", [categoryId]);
+        if (subcategories.rows.length > 0) {
+            return res.status(400).json({ message: "Cannot delete category with subcategories" });
+        }
+
+        await pool.query("DELETE FROM categories WHERE id = $1", [categoryId]);
+        res.status(204).send();
+    } catch (error) {
+        console.error("Error deleting category:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost, deleteUserComment, addCategory, editCategory, deleteCategory };

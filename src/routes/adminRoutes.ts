@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -26,5 +26,10 @@ router.delete("/posts/post/:postId", isAuthenticated, isAdmin, deleteUserPost);
 // Comment Routes (Admin access only)
 router.get("/comments/all-comments", isAuthenticated, isAdmin, viewComments);
 router.delete("/comments/comment/:commentId", isAuthenticated, isAdmin, deleteUserComment);
+
+// Category Routes (Admin access only)
+router.post("/categories/category", isAuthenticated, isAdmin, addCategory);
+router.patch("/categories/category/:categoryId", isAuthenticated, isAdmin, editCategory);
+router.delete("/categories/category/:categoryId", isAuthenticated, isAdmin, deleteUserComment);
 
 export default router;

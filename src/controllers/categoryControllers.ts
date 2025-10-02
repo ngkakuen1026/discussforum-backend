@@ -3,11 +3,11 @@ import { Request, Response } from 'express';
 
 const getAllCategories = async (req: Request, res: Response) => {
     try {
-        const result = await pool.query("SELECT * FROM categories");
+        const result = await pool.query("SELECT id, name, parent_id FROM categories"); 
         res.status(200).json({ categories: result.rows });
     } catch (error) {
         console.error("Error fetching categories:", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: "Internal Server Error" });
     }   
 };
 
