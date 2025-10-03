@@ -301,7 +301,7 @@ const editParentCategory = async (req: Request<{ parentCategoryId: string }, {},
             return;
         }
 
-        await pool.query("UPDATE parent_categories SET name = $1 WHERE id = $2", [name, parentCategoryId]);
+        await pool.query("UPDATE parent_categories SET name = $1 WHERE id = $2", [name.toUpperCase(), parentCategoryId]);
         res.status(200).json({
             message: `Parent category updated successfully`,
             parentCategory: { id: parentCategoryId, newName: name }
@@ -395,7 +395,7 @@ const editCategory = async (req: Request<{ categoryId: string }, {}, editCategor
             return;
         }
 
-        await pool.query("UPDATE categories SET name = $1, parent_id = $2 WHERE id = $3", [name, parent_id, categoryId]);
+        await pool.query("UPDATE categories SET name = $1, parent_id = $2 WHERE id = $3", [name.toUpperCase(), parent_id, categoryId]);
         res.status(200).json({
             message: `Category updated successfully`,
             category: { id: categoryId, newName: name, newParentId: parent_id }

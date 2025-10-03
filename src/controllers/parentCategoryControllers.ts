@@ -3,7 +3,7 @@ import e, { Request, Response } from 'express';
 
 const getAllParentCategories = async (req: Request, res: Response) => {
     try {
-        const result = await pool.query("SELECT id, name FROM parent_categories")
+        const result = await pool.query("SELECT id, name FROM parent_categories ORDER BY id ASC")
         res.status(200).json({ parentCategories: result.rows });
     } catch (error) {
         console.error("Error fetching parent categories:", error);
