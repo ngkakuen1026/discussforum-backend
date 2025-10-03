@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { addCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, addParentCategory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -27,9 +27,14 @@ router.delete("/posts/post/:postId", isAuthenticated, isAdmin, deleteUserPost);
 router.get("/comments/all-comments", isAuthenticated, isAdmin, viewComments);
 router.delete("/comments/comment/:commentId", isAuthenticated, isAdmin, deleteUserComment);
 
+// Parent Category Routes (Admin access only)
+router.post("/parent-categories/parent-category", isAuthenticated, isAdmin, addParentCategory);
+router.patch("/parent-categories/parent-category/:parentCategoryId", isAuthenticated, isAdmin, editParentCategory);
+router.delete("/parent-categories/parent-category/:parentCategoryId", isAuthenticated, isAdmin, deleteParentCategory);
+
 // Category Routes (Admin access only)
 router.post("/categories/category", isAuthenticated, isAdmin, addCategory);
 router.patch("/categories/category/:categoryId", isAuthenticated, isAdmin, editCategory);
-router.delete("/categories/category/:categoryId", isAuthenticated, isAdmin, deleteUserComment);
+router.delete("/categories/category/:categoryId", isAuthenticated, isAdmin, deleteCategory);
 
 export default router;

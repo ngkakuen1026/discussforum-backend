@@ -4,7 +4,7 @@ import { EditProfileRequestBody } from '../types/userTypes';
 import cloudinary from "../config/cloudinary";
 import fs from "fs";
 import { extractPublicId } from "../utils/extractCloudinaryUrl";
-import { addCategoryRequestBody, editCategoryRequestBody } from '../types/categoryTypes';
+import { addCategoryRequestBody, addParentCategoryRequestBody, editCategoryRequestBody } from '../types/categoryTypes';
 
 //Users db table related controllers
 const viewAllUsers = async (req: Request, res: Response) => {
@@ -252,11 +252,90 @@ const deleteUserComment = async (req: Request<{ commentId: string }, {}, {}>, re
     }
 }
 
+//Parent Categories db table related controllers
+const addParentCategory = async (req: Request<{}, {}, addParentCategoryRequestBody>, res: Response) => {
+    const { name } = req.body;
+
+    if (!name || name.length < 2) {
+        res.status(400).json({ message: "Parent category name is required and must be at least 2 characters long" });
+        return;
+    }
+
+    try {
+        const existingCategory = await pool.query("SELECT * FROM parent_categories WHERE name ILIKE $1", [name]);
+        if (existingCategory.rows.length > 0) {
+            res.status(409).json({ message: "Parent category already exists" });
+            return;
+        }
+        const result = await pool.query(
+            "INSERT INTO parent_categories (name, created_at) VALUES ($1, NOW()) RETURNING *",
+            [name.toUpperCase()]
+        );
+
+        res.status(201).json({ message: "Parent category added successfully", parentCategory: result.rows[0] });
+    } catch (error) {
+        console.error("Error adding parent category:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+const editParentCategory = async (req: Request<{ parentCategoryId: string }, {}, editCategoryRequestBody>, res: Response) => {
+    const parentCategoryId = req.params.parentCategoryId;
+    const { name } = req.body;
+
+    if (!name || name.length < 2) {
+        res.status(400).json({ message: "Parent category name is required and must be at least 2 characters long" });
+        return;
+    }
+
+    try {
+        const categoryResult = await pool.query("SELECT * FROM parent_categories WHERE id = $1", [parentCategoryId]);
+        if (categoryResult.rowCount === 0) {
+            res.status(404).json({ message: "Parent category not found" });
+            return;
+        }
+
+        const duplicateCheck = await pool.query("SELECT * FROM parent_categories WHERE name ILIKE $1 AND id != $2", [name, parentCategoryId]);
+        if (duplicateCheck.rows.length > 0) {
+            res.status(409).json({ message: "Another parent category with the same name already exists" });
+            return;
+        }
+
+        await pool.query("UPDATE parent_categories SET name = $1 WHERE id = $2", [name, parentCategoryId]);
+        res.status(200).json({
+            message: `Parent category updated successfully`,
+            parentCategory: { id: parentCategoryId, newName: name }
+        });
+    } catch (error) {
+        console.error("Error updating parent category:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+const deleteParentCategory = async (req: Request<{ parentCategoryId: string }, {}, {}>, res: Response) => {
+    const parentCategoryId = req.params.parentCategoryId;
+
+    try {
+        const categoryResult = await pool.query("SELECT * FROM parent_categories WHERE id = $1", [parentCategoryId]);
+        if (categoryResult.rowCount === 0) {
+            res.status(404).json({ message: "Parent category not found" });
+            return;
+        }
+
+        await pool.query("UPDATE categories SET parent_id = NULL WHERE parent_id = $1", [parentCategoryId]);
+        await pool.query("DELETE FROM parent_categories WHERE id = $1", [parentCategoryId]);
+        res.status(204).send();
+    } catch (error) {
+        console.error("Error deleting parent category:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 //Categories db table related controllers
 const addCategory = async (req: Request<{}, {}, addCategoryRequestBody>, res: Response) => {
-    const { name, parent_id } = req.body; 
+    const { name, parent_id } = req.body;
 
-    if (!name || name.length < 2) { 
+    if (!name || name.length < 2) {
         res.status(400).json({ message: "Category name is required and must be at least 2 characters long" });
         return;
     }
@@ -277,7 +356,7 @@ const addCategory = async (req: Request<{}, {}, addCategoryRequestBody>, res: Re
 
         const result = await pool.query(
             "INSERT INTO categories (name, parent_id, created_at) VALUES ($1, $2, NOW()) RETURNING *",
-            [name, parent_id]
+            [name.toUpperCase(), parent_id]
         );
 
         res.status(201).json({ message: "Category added successfully", category: result.rows[0] });
@@ -289,9 +368,9 @@ const addCategory = async (req: Request<{}, {}, addCategoryRequestBody>, res: Re
 
 const editCategory = async (req: Request<{ categoryId: string }, {}, editCategoryRequestBody>, res: Response) => {
     const categoryId = req.params.categoryId;
-    const { name, parent_id } = req.body; 
+    const { name, parent_id } = req.body;
 
-    if (!name || name.length < 2) { 
+    if (!name || name.length < 2) {
         res.status(400).json({ message: "Category name is required and must be at least 2 characters long" });
         return;
     }
@@ -350,4 +429,4 @@ const deleteCategory = async (req: Request<{ categoryId: string }, {}, {}>, res:
     }
 };
 
-export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost, deleteUserComment, addCategory, editCategory, deleteCategory };
+export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost, deleteUserComment, addParentCategory, editParentCategory, deleteParentCategory, addCategory, editCategory, deleteCategory };
