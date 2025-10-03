@@ -51,6 +51,4 @@ const createComment = async (req: Request<{ postId: string }, {}, CreateCommentR
     }
 }
 
-
-
 export { viewComments, createComment };
