@@ -6,16 +6,36 @@ const viewOwnFollowers = async (req: Request, res: Response) => {
     try {
         const result = await pool.query(
             `SELECT 
-            users.id, 
-            users.username 
-            FROM users JOIN user_following ON users.id = user_following.follower_id 
+                users.id, 
+                users.username 
+            FROM users 
+            JOIN user_following ON users.id = user_following.follower_id 
             WHERE user_following.followed_id = $1`,
             [userId]
         );
-        res.status(200).json({ followers: result.rows });
+        res.status(200).json({ followersCount: result.rows.length, followers: result.rows });
     } catch (error) {
         console.error('Error fetching followers:', error);
         res.status(500).json({ error: 'Failed to fetch followers' });
+    }
+}
+
+const viewOwnFollowing = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    try {
+        const result = await pool.query(
+            `SELECT 
+                users.id, 
+                users.username 
+            FROM users 
+            JOIN user_following ON users.id = user_following.followed_id 
+            WHERE user_following.follower_id = $1`,
+            [userId]
+        );
+        res.status(200).json({ followingCount: result.rows.length, following: result.rows });
+    } catch (error) {
+        console.error('Error fetching following users:', error);
+        res.status(500).json({ error: 'Failed to fetch following users' });
     }
 }
 
@@ -85,4 +105,4 @@ const unfollowUser = async (req: Request, res: Response) => {
     }
 };
 
-export { viewOwnFollowers, followUser, unfollowUser };
+export { viewOwnFollowers, viewOwnFollowing, followUser, unfollowUser };
