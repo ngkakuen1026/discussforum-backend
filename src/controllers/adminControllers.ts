@@ -429,4 +429,82 @@ const deleteCategory = async (req: Request<{ categoryId: string }, {}, {}>, res:
     }
 };
 
-export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost, deleteUserComment, addParentCategory, editParentCategory, deleteParentCategory, addCategory, editCategory, deleteCategory };
+//user_following db table related controllers
+const viewUserFollowers = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
+    const userId = req.params.userId;
+
+    try {
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (userResult.rowCount === 0) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        const followersResult = await pool.query(
+            `SELECT users.id, users.username, users.first_name, users.last_name, users.profile_image
+             FROM users
+             JOIN user_following ON users.id = user_following.follower_id
+             WHERE user_following.followed_id = $1`,
+            [userId]
+        );
+        res.status(200).json({ userFollowersCount: followersResult.rows.length, userFollowerList: followersResult.rows });
+    } catch (error) {
+        console.error("Error fetching followers:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+const viewUserFollowing = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
+    const userId = req.params.userId;
+
+    try {
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (userResult.rowCount === 0) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        const followingResult = await pool.query(
+            `SELECT users.id, users.username, users.first_name, users.last_name, users.profile_image
+             FROM users
+             JOIN user_following ON users.id = user_following.followed_id
+             WHERE user_following.follower_id = $1`,
+            [userId]
+        );
+        res.status(200).json({ userFollowingCount: followingResult.rows.length, userFollowingList: followingResult.rows });
+    } catch (error) {
+        console.error("Error fetching following users:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+const removeUserFollower = async (req: Request<{ userId: string, followerId: string }, {}, {}>, res: Response) => {
+    const { userId, followerId } = req.params;
+
+    if (userId === followerId) {
+        res.status(400).json({ message: "You cannot remove yourself" });
+        return;
+    }
+
+    try {
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (userResult.rowCount === 0) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        const followerResult = await pool.query("SELECT * FROM users WHERE id = $1", [followerId]);
+        if (followerResult.rowCount === 0) {
+            res.status(404).json({ message: "Follower not found" });
+            return;
+        }
+
+        await pool.query("DELETE FROM user_following WHERE follower_id = $1 AND followed_id = $2", [followerId, userId]);
+        res.status(200).json({ message: "Follower removed successfully" });
+    } catch (error) {
+        console.error("Error removing follower:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost, deleteUserComment, addParentCategory, editParentCategory, deleteParentCategory, addCategory, editCategory, deleteCategory, viewUserFollowers, viewUserFollowing, removeUserFollower };

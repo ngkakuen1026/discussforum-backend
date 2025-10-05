@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { addCategory, addParentCategory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, addParentCategory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, removeUserFollower, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -36,5 +36,10 @@ router.delete("/parent-categories/parent-category/:parentCategoryId", isAuthenti
 router.post("/categories/category", isAuthenticated, isAdmin, addCategory);
 router.patch("/categories/category/:categoryId", isAuthenticated, isAdmin, editCategory);
 router.delete("/categories/category/:categoryId", isAuthenticated, isAdmin, deleteCategory);
+
+// User Following Routes (Admin access only)
+router.get("/user-following/followers/:userId", isAuthenticated, isAdmin, viewUserFollowers);
+router.get("/user-following/following/:userId", isAuthenticated, isAdmin, viewUserFollowing);
+router.delete("/user-following/:userId/remove/:followerId", isAuthenticated, isAdmin, removeUserFollower);
 
 export default router;
