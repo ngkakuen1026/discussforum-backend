@@ -499,6 +499,15 @@ const removeUserFollower = async (req: Request<{ userId: string, followerId: str
             return;
         }
 
+        const followCheck = await pool.query(
+            "SELECT * FROM user_following WHERE follower_id = $1 AND followed_id = $2",
+            [followerId, userId]
+        );
+        if (followCheck.rowCount === 0) {
+            res.status(400).json({ message: `User with ${followerId} is not following the user with ${userId}` });
+            return;
+        }
+
         await pool.query("DELETE FROM user_following WHERE follower_id = $1 AND followed_id = $2", [followerId, userId]);
         res.status(200).json({ message: "Follower removed successfully" });
     } catch (error) {
