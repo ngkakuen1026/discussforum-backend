@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import pool from '../db/db';
+import { createNotification } from '../utils/notificationUtils';
 
 const viewOwnFollowers = async (req: Request, res: Response) => {
     const userId = req.user!.id;
@@ -62,6 +63,10 @@ const followUser = async (req: Request, res: Response) => {
             'INSERT INTO user_following (follower_id, followed_id) VALUES ($1, $2)',
             [followerId, followedId]
         );
+
+        const notificationMessage = `User ${followedId} started following you.`;
+        await createNotification(followedId, notificationMessage, "follow", followerId);
+
         res.status(201).json({ message: 'User followed successfully' });
     } catch (error) {
         console.error('Error following user:', error);
@@ -98,6 +103,10 @@ const unfollowUser = async (req: Request, res: Response) => {
             'DELETE FROM user_following WHERE follower_id = $1 AND followed_id = $2',
             [followerId, followedId]
         );
+
+        const notificationMessage = `User ${followedId} unfollowed you.`;
+        await createNotification(followedId, notificationMessage, "unfollow", followerId);
+
         res.status(200).json({ message: 'User unfollowed successfully' });
     } catch (error) {
         console.error('Error unfollowing user:', error);

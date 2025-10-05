@@ -7,6 +7,6 @@ const router = express.Router();
 router.get("/followers/me", isAuthenticated, viewOwnFollowers);
 router.get("/following/me", isAuthenticated, viewOwnFollowing);
 router.post("/follow", isAuthenticated, followUser);
-router.delete("unfollow", isAuthenticated, unfollowUser);
+router.delete("/unfollow", isAuthenticated, unfollowUser);
 
 export default router;

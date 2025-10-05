@@ -9,6 +9,7 @@ import commentRoutes from "./routes/commentRoutes";
 import parentCategoriesRoutes from "./routes/parentCategoryRoutes";
 import categoriesRoutes from "./routes/categoryRoutes";
 import userFollowingRoutes from "./routes/userFollowerRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use(`${API_BASE_PATH}/comments`, commentRoutes);
 app.use(`${API_BASE_PATH}/parent-categories`, parentCategoriesRoutes);
 app.use(`${API_BASE_PATH}/categories`, categoriesRoutes);
 app.use(`${API_BASE_PATH}/user-following`, userFollowingRoutes);
+app.use(`${API_BASE_PATH}/notifications`, notificationRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).send({ message: "Server is healthy!!!"});
