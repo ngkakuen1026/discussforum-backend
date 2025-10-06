@@ -64,7 +64,13 @@ const followUser = async (req: Request, res: Response) => {
             [followerId, followedId]
         );
 
-        const notificationMessage = `User ${followedId} started following you.`;
+        const userResult = await pool.query(
+            'SELECT username FROM users WHERE id = $1',
+            [followerId]
+        );
+
+        const followerUserName = userResult.rows[0].username;
+        const notificationMessage = `User ${followerUserName} started following you.`;
         await createNotification(followedId, notificationMessage, "follow", followerId);
 
         res.status(201).json({ message: 'User followed successfully' });
@@ -104,7 +110,13 @@ const unfollowUser = async (req: Request, res: Response) => {
             [followerId, followedId]
         );
 
-        const notificationMessage = `User ${followedId} unfollowed you.`;
+        const userResult = await pool.query(
+            'SELECT username FROM users WHERE id = $1',
+            [followerId]
+        );
+
+        const unfollowerUserName = userResult.rows[0].username;
+        const notificationMessage = `User ${unfollowerUserName} unfollowed you.`;
         await createNotification(followedId, notificationMessage, "unfollow", followerId);
 
         res.status(200).json({ message: 'User unfollowed successfully' });

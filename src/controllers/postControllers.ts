@@ -1,6 +1,8 @@
 import pool from '../db/db';
 import { Request, Response } from 'express';
 import { CreatePostRequestBody } from '../types/postTypes';
+import { createNotification } from '../utils/notificationUtils';
+import { formatDate } from '../utils/dateUtils';
 
 // View All Posts
 const viewAllPosts = async (req: Request, res: Response) => {
@@ -52,7 +54,7 @@ const viewPostsByCategory = async (req: Request<{ categoryId: string }, {}, {}>,
 
     try {
         const result = await pool.query("SELECT * FROM posts WHERE category_id = $1", [categoryId]);
-        res.status(200).json({posts: result.rows});
+        res.status(200).json({ posts: result.rows });
     } catch (error) {
         console.error("Error fetching posts by category:", error);
         res.status(500).json({ message: "Internal server error" });
@@ -78,8 +80,18 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
     const { title, content, categoryId } = req.body;
 
     try {
-        if (!title || !content) {
-            res.status(400).json({ message: "Title and content are required." });
+        if (!title || !content || !categoryId) {
+            res.status(400).json({ message: "Title, content and categoryId are required." });
+            return;
+        }
+
+        const categoryResult = await pool.query(
+            "SELECT * FROM categories WHERE id = $1",
+            [categoryId]
+        )
+
+        if (categoryResult.rowCount === 0) {
+            res.status(404).json({ message: "Category not found" });
             return;
         }
 
@@ -87,6 +99,27 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
             "INSERT INTO posts (user_id, title, content, category_id, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *",
             [userId, title, content, categoryId]
         );
+
+        // Retrieve all the followers of the user who created the post 
+        const followers = await pool.query(
+            "SELECT follower_id FROM user_following WHERE followed_id = $1",
+            [userId]
+        );
+
+        const userResult = await pool.query(
+            "SELECT username FROM users WHERE id = $1",
+            [userId]
+        )
+
+        const userName = userResult.rows[0]?.username;
+        const postCreatedTime = formatDate(newPost.rows[0].created_at);
+
+        for (const follower of followers.rows) {
+            const followerId = follower.follower_id;
+            const notificationMessage = `User ${userName} created a new post: ${title} at ${postCreatedTime}.`;
+
+            await createNotification(followerId, notificationMessage, 'post');
+        }
 
         res.status(201).json({
             message: "Post created successfully",
