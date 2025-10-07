@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { CreatePostRequestBody } from '../types/postTypes';
 import { createNotification } from '../utils/notificationUtils';
 import { formatDate } from '../utils/dateUtils';
+import { extractUserMentions } from '../utils/extractUserMentions';
 
 // View All Posts
 const viewAllPosts = async (req: Request, res: Response) => {
@@ -119,6 +120,17 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
             const notificationMessage = `User ${userName} created a new post: ${title} at ${postCreatedTime}.`;
 
             await createNotification(followerId, notificationMessage, 'post');
+        }
+
+        const mentions = extractUserMentions(content);
+
+        for (const username of mentions) {
+            const userResult = await pool.query("SELECT id FROM users WHERE username = $1", [username]);
+            if (userResult.rows.length > 0) {
+                const mentionedUserId = userResult.rows[0].id;
+                const notificationMessage = `User ${userName} mentioned you in a post: "${title}".`;
+                await createNotification(mentionedUserId, notificationMessage, 'mention', newPost.rows[0].id);
+            }
         }
 
         res.status(201).json({
