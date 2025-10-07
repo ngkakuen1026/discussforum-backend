@@ -1,14 +1,15 @@
 import pool from '../db/db';
 import { Request, Response } from 'express';
 import { VoteRequestBody } from '../types/postTypes';
+import { createNotification } from '../utils/notificationUtils';
 
 // Get Votes for a Post
-const getVotes = async (req: Request<{postId: string}>, res: Response) => {
+const getVotes = async (req: Request<{ postId: string }>, res: Response) => {
     const postId = req.params.postId;
 
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
-        
+
         if (postResult.rows.length === 0) {
             res.status(404).json({ message: "Post not found" });
             return;
@@ -23,8 +24,8 @@ const getVotes = async (req: Request<{postId: string}>, res: Response) => {
 };
 
 // Vote on a Post
-const votePost = async (req: Request<{postId: string}, {}, VoteRequestBody>, res: Response) => {
-    const postId = req.params.postId;
+const votePost = async (req: Request<{ postId: string }, {}, VoteRequestBody>, res: Response) => {
+    const postId = Number(req.params.postId);
     const userId = req.user!.id;
     const voteType = req.body.voteType;
 
@@ -49,6 +50,17 @@ const votePost = async (req: Request<{postId: string}, {}, VoteRequestBody>, res
         } else {
             await pool.query("INSERT INTO post_votes (post_id, user_id, vote_type) VALUES ($1, $2, $3)", [postId, userId, voteType]);
         }
+
+        const userResult = await pool.query(
+            "SELECT username FROM users WHERE id = $1",
+            [userId]
+        )
+
+        const voterUsername = userResult.rows[0]?.username;
+
+        const postOwnerId = postResult.rows[0].user_id;
+        const notificationMessage = `User ${voterUsername} ${voteType === 1 ? 'liked' : 'disliked'} your post: ${postResult.rows[0].title}.`;
+        await createNotification(postOwnerId, notificationMessage, 'like', postId);
 
         res.status(200).json({ message: "Vote recorded successfully." });
     } catch (error) {

@@ -5,3 +5,7 @@ export interface CreateCommentRequestBody {
 export interface VoteRequestBody {
     voteType: number;
 }
+
+export interface CreateReplyRequestBody {
+    content: string;
+}
