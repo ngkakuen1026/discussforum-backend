@@ -9,6 +9,10 @@ const reportContent = async (req: Request<{ contentId: string }, {}, ReportReque
     const { contentType, reason, customReason, additionalComments } = req.body;
 
     try {
+        if (!contentType) {
+            return res.status(400).json({ message: "Content Type is required." });
+        }
+
         if (!reason) {
             return res.status(400).json({ message: "Reporting reason is required." });
         }

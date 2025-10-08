@@ -7,3 +7,7 @@ export interface ReportRequestBody {
     customReason?: string;
     additionalComments?: string;
 }
+
+export interface ResolveReportRequestBody {
+    status: 'pending' | 'under_review' | 'resolved' | 'rejected';
+}

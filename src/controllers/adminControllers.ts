@@ -5,6 +5,7 @@ import cloudinary from "../config/cloudinary";
 import fs from "fs";
 import { extractPublicId } from "../utils/extractCloudinaryUrl";
 import { addCategoryRequestBody, addParentCategoryRequestBody, editCategoryRequestBody } from '../types/categoryTypes';
+import { ResolveReportRequestBody } from '../types/reportTypes';
 
 //Users db table related controllers
 const viewAllUsers = async (req: Request, res: Response) => {
@@ -516,4 +517,48 @@ const removeUserFollower = async (req: Request<{ userId: string, followerId: str
     }
 }
 
-export { viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount, deleteUserPost, deleteUserComment, addParentCategory, editParentCategory, deleteParentCategory, addCategory, editCategory, deleteCategory, viewUserFollowers, viewUserFollowing, removeUserFollower };
+//report db table related controllers
+const viewAllReports = async (req: Request, res: Response) => {
+    try {
+        const reportsResult = await pool.query("SELECT * FROM reports ORDER BY created_at DESC");
+
+        res.status(200).json({
+            message: "Reports retrieved successfully.",
+            reports: reportsResult.rows,
+        });
+    } catch (error) {
+        console.error("Error fetching reports:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const resolveReport = async (req: Request<{ reportId: string }, {}, ResolveReportRequestBody>, res: Response) => {
+    const reportId = Number(req.params.reportId);
+    const { status } = req.body;
+
+    try {
+        const result = await pool.query("UPDATE reports SET status = $1 WHERE id = $2 RETURNING *", [status, reportId]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: "Report not found." });
+        }
+
+        res.status(200).json({
+            message: "Report resolved successfully.",
+            report: result.rows[0],
+        });
+    } catch (error) {
+        console.error("Error resolving report:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export {
+    viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount,
+    deleteUserPost,
+    deleteUserComment,
+    addParentCategory, editParentCategory, deleteParentCategory,
+    addCategory, editCategory, deleteCategory,
+    viewUserFollowers, viewUserFollowing, removeUserFollower,
+    viewAllReports, resolveReport
+};

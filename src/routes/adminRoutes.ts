@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { addCategory, addParentCategory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, removeUserFollower, searchUsers, uploadUserProfileImage, viewAllUsers, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, addParentCategory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllReports, viewAllUsers, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -41,5 +41,9 @@ router.delete("/categories/category/:categoryId", isAuthenticated, isAdmin, dele
 router.get("/user-following/followers/:userId", isAuthenticated, isAdmin, viewUserFollowers);
 router.get("/user-following/following/:userId", isAuthenticated, isAdmin, viewUserFollowing);
 router.delete("/user-following/:userId/remove/:followerId", isAuthenticated, isAdmin, removeUserFollower);
+
+// Report Routes (Admin access only)
+router.get("/reports/all-reports", isAuthenticated, isAdmin, viewAllReports);
+router.patch("/reports/report/:reportId", isAuthenticated, isAdmin, resolveReport);
 
 export default router;
