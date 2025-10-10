@@ -3,12 +3,13 @@ import { isAuthenticated } from '../middleware/auth';
 import { createPost, deletePost, searchPosts, viewAllOwnPosts, viewAllPosts, viewPost, viewPostsByCategory } from '../controllers/postControllers';
 import { getVotes, votePost } from '../controllers/postVoteControllers';
 import attachUserIfExists from '../middleware/attachUserIfExists';
+import { logPostHistory } from '../middleware/postHistory';
 
 const router = express.Router();
 
 // Public Route for post
 router.get("/all-posts", attachUserIfExists, viewAllPosts);
-router.get("/post/:postId", viewPost);
+router.get("/post/:postId", attachUserIfExists, logPostHistory, viewPost);
 router.get("/search", searchPosts);
 router.get("/all-posts/:categoryId", viewPostsByCategory)
 
