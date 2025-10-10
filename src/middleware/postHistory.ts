@@ -17,28 +17,16 @@ const logPostHistory = async (req: Request, res: Response, next: NextFunction) =
                 return next();
             }
 
-            const visitCheck = await pool.query(
-                "SELECT id FROM browsing_history WHERE user_id = $1 AND post_id = $2",
+            await pool.query(
+                "INSERT INTO browsing_history (user_id, post_id) VALUES ($1, $2)",
                 [userId, postId]
             );
-
-            if (visitCheck.rows.length > 0) {
-                await pool.query(
-                    "UPDATE browsing_history SET visited_at = NOW() WHERE user_id = $1 AND post_id = $2",
-                    [userId, postId]
-                );
-                console.log(`User ${userId} has already visited post ${postId}.`);
-            } else {
-                await pool.query(
-                    "INSERT INTO browsing_history (user_id, post_id) VALUES ($1, $2)",
-                    [userId, postId]
-                );
-            }
+            console.log(`User ${userId} visited post ${postId}.`);
         } catch (error) {
             console.error("Error logging post visit:", error);
         }
     }
-    next(); 
+    next();
 };
 
 export { logPostHistory };

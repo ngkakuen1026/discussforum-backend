@@ -12,6 +12,7 @@ import userFollowingRoutes from "./routes/userFollowerRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
 import reportRoutes from "./routes/reportRoutes";
 import userBlockedRoutes from "./routes/userBlockedRoutes"
+import browsingHistoriesRoutes from "./routes/browsingHistoryRoutes";
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use(`${API_BASE_PATH}/user-following`, userFollowingRoutes);
 app.use(`${API_BASE_PATH}/notifications`, notificationRoutes);
 app.use(`${API_BASE_PATH}/reports`, reportRoutes);
 app.use(`${API_BASE_PATH}/user-blocked`, userBlockedRoutes);
+app.use(`${API_BASE_PATH}/browsing-history`, browsingHistoriesRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).send({ message: "Server is healthy!!!" });
