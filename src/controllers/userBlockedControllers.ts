@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 const blockUser = async (req: Request, res: Response) => {
     const blockerId = req.user!.id;
     const blockedId = Number(req.params.userId);
+    const { block_reason } = req.body;
 
     if (blockerId === blockedId) {
         res.status(400).json({ message: 'You cannot block yourself' });
@@ -22,8 +23,8 @@ const blockUser = async (req: Request, res: Response) => {
         }
 
         await pool.query(
-            "INSERT INTO user_blocked (blocker_id, blocked_id) VALUES ($1, $2)",
-            [blockerId, blockedId]
+            "INSERT INTO user_blocked (blocker_id, blocked_id, block_reason) VALUES ($1, $2, $3)",
+            [blockerId, blockedId, block_reason]
         );
 
         res.status(200).json({ message: "User blocked successfully." });
@@ -61,7 +62,8 @@ const getBlockedUsers = async (req: Request, res: Response) => {
     try {
         const result = await pool.query(
             `
-            SELECT users.id, users.username, users.profile_image
+            SELECT users.id, users.username, users.profile_image,
+            user_blocked.created_at, user_blocked.block_reason
             FROM user_blocked
             JOIN users ON user_blocked.blocked_id = users.id
             WHERE user_blocked.blocker_id = $1
@@ -72,7 +74,9 @@ const getBlockedUsers = async (req: Request, res: Response) => {
         const blockedUserList = result.rows.map(row => ({
             id: row.id,
             username: row.username,
-            profileImage: row.profile_image
+            profileImage: row.profile_image,
+            blockedAt: row.created_at,
+            blockReason: row.block_reason || "No reason provided"
         }));
 
         res.status(200).json({

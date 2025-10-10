@@ -7,14 +7,33 @@ import { extractUserMentions } from '../utils/extractUserMentions';
 
 // View All Posts
 const viewAllPosts = async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+
     try {
-        const postsResult = await pool.query("SELECT * FROM posts ORDER BY created_at DESC");
+        let blockedUserIds = [];
+        if (userId) {
+            const blockedResult = await pool.query(
+                "SELECT blocked_id FROM user_blocked WHERE blocker_id = $1",
+                [userId]
+            );
+            blockedUserIds = blockedResult.rows.map(row => row.blocked_id);
+        }
+
+        const postsResult = await pool.query(
+            `
+            SELECT * FROM posts 
+            ${userId && blockedUserIds.length > 0 ? "WHERE user_id != $1 AND user_id NOT IN (SELECT blocked_id FROM user_blocked WHERE blocker_id = $1)" : ""}
+            ORDER BY created_at DESC
+            `,
+            userId ? [userId] : []
+        );
+
         res.status(200).json({ posts: postsResult.rows });
     } catch (error) {
         console.error("Error fetching posts:", error);
         res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 // View Single Post
 const viewPost = async (req: Request<{ postId: string }, {}, {}>, res: Response) => {

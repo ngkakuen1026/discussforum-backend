@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { addCategory, addParentCategory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllReports, viewAllUsers, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, addParentCategory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, helpBlockUser, helpUnblockUser, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllReports, viewAllUsers, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -45,5 +45,10 @@ router.delete("/user-following/:userId/remove/:followerId", isAuthenticated, isA
 // Report Routes (Admin access only)
 router.get("/reports/all-reports", isAuthenticated, isAdmin, viewAllReports);
 router.patch("/reports/report/:reportId", isAuthenticated, isAdmin, resolveReport);
+
+// User Blocked Routes (Admin access only)
+router.get("/user-blocked/all-blocked-relationships", isAuthenticated, isAdmin, viewAllBlockedUsers);
+router.post("/user-blocked/help-blocking", isAuthenticated, isAdmin, helpBlockUser);
+router.delete("/user-blocked/help-unblocking", isAuthenticated, isAdmin, helpUnblockUser);
 
 export default router;

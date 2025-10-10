@@ -553,6 +553,83 @@ const resolveReport = async (req: Request<{ reportId: string }, {}, ResolveRepor
     }
 };
 
+//user_blocked db table related controllers
+const viewAllBlockedUsers = async (req: Request, res: Response) => {
+    try {
+        const result = await pool.query(`
+            SELECT user_blocked.blocker_id, user_blocked.blocked_id, 
+                users1.username AS blocker_username, 
+                users2.username AS blocked_username
+            FROM user_blocked 
+            JOIN users AS users1 ON user_blocked.blocker_id = users1.id
+            JOIN users AS users2 ON user_blocked.blocked_id = users2.id
+        `);
+
+        const blockedUsersWithMessages = result.rows.map(row => ({
+            blocker_id: row.blocker_id,
+            blocked_id: row.blocked_id,
+            blocker_username: row.blocker_username,
+            blocked_username: row.blocked_username,
+            relations: `${row.blocker_username} blocked ${row.blocked_username}`
+        }));
+
+        res.status(200).json({
+            message: "Blocked users list fetched successfully",
+            blockedUsers: blockedUsersWithMessages
+        });
+    } catch (error) {
+        console.error("Error fetching blocked users:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+const helpBlockUser = async (req: Request, res: Response) => {
+    const { blockerId, blockedId, block_reason } = req.body;
+
+    try {
+        const existingBlock = await pool.query(
+            "SELECT * FROM user_blocked WHERE blocker_id = $1 AND blocked_id = $2",
+            [blockerId, blockedId]
+        );
+
+        if (existingBlock.rows.length > 0) {
+            res.status(400).json({ message: "Block relationship already exists." });
+            return;
+        }
+
+        await pool.query(
+            "INSERT INTO user_blocked (blocker_id, blocked_id, block_reason) VALUES ($1, $2, $3)",
+            [blockerId, blockedId, block_reason]
+        );
+
+        res.status(200).json({ message: "User blocked successfully." });
+    } catch (error) {
+        console.error("Error blocking user:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const helpUnblockUser = async (req: Request, res: Response) => {
+    const { blockerId, blockedId } = req.body;
+
+    try {
+        const result = await pool.query(
+            "DELETE FROM user_blocked WHERE blocker_id = $1 AND blocked_id = $2",
+            [blockerId, blockedId]
+        );
+
+        if (result.rowCount === 0) {
+            res.status(404).json({ message: "No blocked relationship found." });
+            return;
+        }
+
+        res.status(200).json({ message: "User unblocked successfully." });
+    } catch (error) {
+        console.error("Error unblocking user:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 export {
     viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount,
     deleteUserPost,
@@ -560,5 +637,6 @@ export {
     addParentCategory, editParentCategory, deleteParentCategory,
     addCategory, editCategory, deleteCategory,
     viewUserFollowers, viewUserFollowing, removeUserFollower,
-    viewAllReports, resolveReport
+    viewAllReports, resolveReport,
+    viewAllBlockedUsers, helpBlockUser, helpUnblockUser,
 };
