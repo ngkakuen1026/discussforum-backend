@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { addCategory, addParentCategory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, helpBlockUser, helpUnblockUser, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllReports, viewAllUsers, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, addParentCategory, deleteBrowsingHistory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserBrowsingHistories, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, getBrowsingAnalytics, getBrowsingHistorySummary, helpBlockUser, helpUnblockUser, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllReports, viewAllUsers, viewAllUsersBrowsingHistory, viewUserBrowsingHistory, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -50,5 +50,13 @@ router.patch("/reports/report/:reportId", isAuthenticated, isAdmin, resolveRepor
 router.get("/user-blocked/all-blocked-relationships", isAuthenticated, isAdmin, viewAllBlockedUsers);
 router.post("/user-blocked/help-blocking", isAuthenticated, isAdmin, helpBlockUser);
 router.delete("/user-blocked/help-unblocking", isAuthenticated, isAdmin, helpUnblockUser);
+
+// Browsing History Routes (Admin access only)
+router.get("/browsing-history/all-users-browsing-history", isAuthenticated, isAdmin, viewAllUsersBrowsingHistory);
+router.get("/browsing-history/user-browsing-history/:userId", isAuthenticated, isAdmin, viewUserBrowsingHistory);
+router.get("/browsing-history/analytics", isAuthenticated, isAdmin, getBrowsingAnalytics);
+router.get("/browsing-history/summary", isAuthenticated, isAdmin, getBrowsingHistorySummary);
+router.delete("/browsing-history/user-browsing-history/:userId", isAuthenticated, isAdmin, deleteUserBrowsingHistories);
+router.delete("/browsing-history/:historyId", isAuthenticated, isAdmin, deleteBrowsingHistory);
 
 export default router;

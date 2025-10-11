@@ -630,6 +630,124 @@ const helpUnblockUser = async (req: Request, res: Response) => {
     }
 };
 
+//browsing_histroy db table related controllers
+const viewAllUsersBrowsingHistory = async (req: Request, res: Response) => {
+    try {
+        const result = await pool.query("SELECT * FROM browsing_history ORDER BY visited_at DESC");
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error("Error fetching browsing history:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+const viewUserBrowsingHistory = async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    try {
+        const result = await pool.query("SELECT * FROM browsing_history WHERE user_id = $1", [userId]);
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error("Error fetching user browsing history:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const deleteBrowsingHistory = async (req: Request, res: Response) => {
+    const historyId = req.params.historyId;
+    try {
+        await pool.query("DELETE FROM browsing_history WHERE id = $1", [historyId]);
+        res.status(200).json({ message: "Browsing entry deleted successfully." });
+    } catch (error) {
+        console.error("Error deleting browsing entry:", error);
+        res.status(500).json({ message: "Internal server error." });
+    }
+};
+
+const deleteUserBrowsingHistories = async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    const { postIds } = req.body;
+
+    if (!Array.isArray(postIds) || postIds.length === 0) {
+        res.status(400).json({ message: "Invalid post IDs" });
+        return;
+    }
+
+    try {
+        const result = await pool.query(
+            "DELETE FROM browsing_history WHERE user_id = $1 AND post_id = ANY($2::int[])",
+            [userId, postIds]
+        );
+
+        res.status(200).json({ message: `Browsing history deleted for user ID ${userId}`, deletedCount: result.rowCount });
+    } catch (error) {
+        console.error("Error deleting browsing history:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const getBrowsingAnalytics = async (req: Request, res: Response) => {
+    try {
+        const mostVisitedPosts = await pool.query(`
+            SELECT post_id, COUNT(*) AS visit_count, COUNT(DISTINCT user_id) AS unique_users
+            FROM browsing_history
+            GROUP BY post_id
+            ORDER BY visit_count DESC
+        `);
+
+        const dailyVisits = await pool.query(`
+            SELECT post_id, DATE(visited_at) AS visit_date, COUNT(*) AS visits
+            FROM browsing_history
+            GROUP BY post_id, visit_date
+            ORDER BY visit_date DESC, visits DESC
+        `);
+
+        const userVisitPatterns = await pool.query(`
+            SELECT user_id, COUNT(DISTINCT post_id) AS posts_visited
+            FROM browsing_history
+            GROUP BY user_id
+            ORDER BY posts_visited DESC
+        `);
+
+        res.status(200).json({
+            most_visited_posts: mostVisitedPosts.rows,
+            daily_visits: dailyVisits.rows,
+            user_visit_patterns: userVisitPatterns.rows,
+        });
+    } catch (error) {
+        console.error("Error fetching detailed analytics:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const getBrowsingHistorySummary = async (req: Request, res: Response) => {
+    try {
+        const totalVisitsResult = await pool.query("SELECT COUNT(*) AS total_visits FROM browsing_history");
+        const uniqueUsersResult = await pool.query("SELECT COUNT(DISTINCT user_id) AS unique_users FROM browsing_history");
+
+        const totalVisits = totalVisitsResult.rows[0].total_visits;
+        const uniqueUsers = uniqueUsersResult.rows[0].unique_users;
+
+        const averageVisitsPerPostResult = await pool.query(`
+            SELECT AVG(visit_count) AS average_visits_per_post
+            FROM (
+                SELECT post_id, COUNT(*) AS visit_count
+                FROM browsing_history
+                GROUP BY post_id
+            ) AS post_visits
+        `);
+        const averageVisitsPerPost = averageVisitsPerPostResult.rows[0].average_visits_per_post || 0;
+
+        res.status(200).json({
+            total_visits: totalVisits,
+            unique_users: uniqueUsers,
+            average_visits_per_post: averageVisitsPerPost,
+        });
+    } catch (error) {
+        console.error("Error fetching browsing history summary:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 export {
     viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount,
     deleteUserPost,
@@ -639,4 +757,5 @@ export {
     viewUserFollowers, viewUserFollowing, removeUserFollower,
     viewAllReports, resolveReport,
     viewAllBlockedUsers, helpBlockUser, helpUnblockUser,
+    viewAllUsersBrowsingHistory, viewUserBrowsingHistory, deleteUserBrowsingHistories, deleteBrowsingHistory, getBrowsingAnalytics, getBrowsingHistorySummary
 };
