@@ -73,4 +73,31 @@ const addPostToBookmark = async (req: Request<{}, {}, AddBookmarkRequestBody>, r
     }
 }
 
-export { viewBookmarks, addPostToBookmark };
+const removePostFromBookmark = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const postId = Number(req.params.postId);
+
+    if (!postId) {
+        res.status(400).json({ message: 'Post ID is required.' });
+        return;
+    }
+
+    try {
+        const result = await pool.query(
+            "DELETE FROM bookmarks WHERE user_id = $1 AND post_id = $2",
+            [userId, postId]
+        );
+
+        if (result.rowCount === 0) {
+            res.status(404).json({ message: 'Post not found in bookmark.' });
+            return;
+        }
+
+        res.status(200).json({ message: `Post ${postId} removed from bookmark successfully.` });
+    } catch (error) {
+        console.error('Error removing post from bookmark:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+}
+
+export { viewBookmarks, addPostToBookmark, removePostFromBookmark };

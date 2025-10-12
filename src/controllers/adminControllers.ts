@@ -748,6 +748,84 @@ const getBrowsingHistorySummary = async (req: Request, res: Response) => {
     }
 };
 
+//bookmark db table related controllers
+const viewAllBookmarks = async (req: Request, res: Response) => {
+    try {
+        const bookmarks = await pool.query(`
+            SELECT 
+                b.id AS bookmark_id,
+                b.user_id,
+                u.username AS user_name,
+                p.id AS post_id,
+                p.title AS post_title,
+                COALESCE(SUM(CASE WHEN pv.vote_type = 1 THEN 1 ELSE 0 END), 0) AS upvotes,
+                COALESCE(SUM(CASE WHEN pv.vote_type = -1 THEN 1 ELSE 0 END), 0) AS downvotes,
+                c.name AS category_name,
+                p.created_at AS post_created_at
+            FROM 
+                bookmarks b
+            JOIN 
+                posts p ON b.post_id = p.id
+            JOIN 
+                users u ON b.user_id = u.id
+            LEFT JOIN 
+                post_votes pv ON p.id = pv.post_id
+            LEFT JOIN 
+                categories c ON p.category_id = c.id
+            GROUP BY 
+                b.id, u.username, p.id, c.name
+            ORDER BY 
+                b.created_at DESC
+        `);
+
+        res.status(200).json(bookmarks.rows);
+    } catch (error) {
+        console.error("Error fetching all bookmarks:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+const viewBookmarkStatistics = async (req: Request, res: Response) => {
+    try {
+        const totalBookmarks = await pool.query("SELECT COUNT(*) FROM bookmarks");
+        const bookmarksPerUser = await pool.query(`
+            SELECT user_id, COUNT(*) AS total FROM bookmarks GROUP BY user_id
+        `);
+
+        res.status(200).json({
+            totalBookmarks: totalBookmarks.rows[0].count,
+            bookmarksPerUser: bookmarksPerUser.rows,
+        });
+    } catch (error) {
+        console.error("Error fetching bookmark statistics:", error);
+        res.status(500).json({ message: "Internal server error." });
+    }
+};
+
+const deleteUserBookmarkById = async (req: Request<{bookmarkId: string}, {}, {}>, res: Response) => {
+    const bookmarkId = Number(req.params.bookmarkId);
+
+    if (!bookmarkId) {
+        return res.status(400).json({ message: "Bookmark ID is required." });
+    }
+
+    try {
+        const result = await pool.query(
+            "DELETE FROM bookmarks WHERE id = $1",
+            [bookmarkId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: "Bookmark not found." });
+        }
+
+        res.status(200).json({ message: `Bookmark ${bookmarkId} removed successfully.` });
+    } catch (error) {
+        console.error("Error removing bookmark:", error);
+        res.status(500).json({ message: "Internal server error." });
+    }
+};
+
 export {
     viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount,
     deleteUserPost,
@@ -757,5 +835,6 @@ export {
     viewUserFollowers, viewUserFollowing, removeUserFollower,
     viewAllReports, resolveReport,
     viewAllBlockedUsers, helpBlockUser, helpUnblockUser,
-    viewAllUsersBrowsingHistory, viewUserBrowsingHistory, deleteUserBrowsingHistories, deleteBrowsingHistory, getBrowsingAnalytics, getBrowsingHistorySummary
+    viewAllUsersBrowsingHistory, viewUserBrowsingHistory, deleteUserBrowsingHistories, deleteBrowsingHistory, getBrowsingAnalytics, getBrowsingHistorySummary,
+    viewAllBookmarks, viewBookmarkStatistics, deleteUserBookmarkById
 };

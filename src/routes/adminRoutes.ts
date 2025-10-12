@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { addCategory, addParentCategory, deleteBrowsingHistory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserBrowsingHistories, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, getBrowsingAnalytics, getBrowsingHistorySummary, helpBlockUser, helpUnblockUser, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllReports, viewAllUsers, viewAllUsersBrowsingHistory, viewUserBrowsingHistory, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, addParentCategory, deleteBrowsingHistory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserBookmarkById, deleteUserBrowsingHistories, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, getBrowsingAnalytics, getBrowsingHistorySummary, helpBlockUser, helpUnblockUser, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllBookmarks, viewAllReports, viewAllUsers, viewAllUsersBrowsingHistory, viewBookmarkStatistics, viewUserBrowsingHistory, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -58,5 +58,10 @@ router.get("/browsing-history/analytics", isAuthenticated, isAdmin, getBrowsingA
 router.get("/browsing-history/summary", isAuthenticated, isAdmin, getBrowsingHistorySummary);
 router.delete("/browsing-history/user-browsing-history/:userId", isAuthenticated, isAdmin, deleteUserBrowsingHistories);
 router.delete("/browsing-history/:historyId", isAuthenticated, isAdmin, deleteBrowsingHistory);
+
+// Bookmark Routes (Admin access only)
+router.get("/bookmarks/all-user-bookmarks", isAuthenticated, isAdmin, viewAllBookmarks);
+router.get("/bookmarks/statistics", isAuthenticated, isAdmin, viewBookmarkStatistics);
+router.delete("/bookmarks/bookmark/:bookmarkId", isAuthenticated, isAdmin, deleteUserBookmarkById);
 
 export default router;
