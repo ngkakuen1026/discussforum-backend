@@ -6,6 +6,7 @@ import fs from "fs";
 import { extractPublicId } from "../utils/extractCloudinaryUrl";
 import { addCategoryRequestBody, addParentCategoryRequestBody, editCategoryRequestBody } from '../types/categoryTypes';
 import { ResolveReportRequestBody } from '../types/reportTypes';
+import { CreateTagRequestBody, LinkTagToPostRequestBody } from '../types/tagTypes';
 
 //Users db table related controllers
 const viewAllUsers = async (req: Request, res: Response) => {
@@ -802,7 +803,7 @@ const viewBookmarkStatistics = async (req: Request, res: Response) => {
     }
 };
 
-const deleteUserBookmarkById = async (req: Request<{bookmarkId: string}, {}, {}>, res: Response) => {
+const deleteUserBookmarkById = async (req: Request<{ bookmarkId: string }, {}, {}>, res: Response) => {
     const bookmarkId = Number(req.params.bookmarkId);
 
     if (!bookmarkId) {
@@ -816,13 +817,119 @@ const deleteUserBookmarkById = async (req: Request<{bookmarkId: string}, {}, {}>
         );
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ message: "Bookmark not found." });
+            res.status(404).json({ message: "Bookmark not found." });
+            return;
         }
 
         res.status(200).json({ message: `Bookmark ${bookmarkId} removed successfully.` });
     } catch (error) {
         console.error("Error removing bookmark:", error);
         res.status(500).json({ message: "Internal server error." });
+    }
+};
+
+//tag and post_tags db table related controllers
+const createTag = async (req: Request<{}, {}, CreateTagRequestBody>, res: Response) => {
+    const userId = req.user!.id;
+    const { name } = req.body;
+
+    if (!name) {
+        res.status(400).json({ message: "Tag name is required." });
+        return;
+    }
+
+    try {
+        const tagResult = await pool.query(
+            "SELECT * FROM tags WHERE name ILIKE $1",
+            [name]
+        )
+
+        if (tagResult.rows.length > 0) {
+            res.status(409).json({ message: "Similar tags already exists" });
+            return;
+        }
+
+        const result = await pool.query(
+            "INSERT INTO tags (name, approved, user_id) VALUES ($1, TRUE, $2) RETURNING *",
+            [name, userId]
+        );
+
+        res.status(201).json({
+            message: "Tag created successfully.",
+            tag: result.rows[0],
+        });
+    } catch (error) {
+        console.error("Error creating tag:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+const linkTagToPost = async (req: Request<{}, {}, LinkTagToPostRequestBody>, res: Response) => {
+    const { postId, tagId } = req.body;
+
+    if (!postId || !tagId) {
+        return res.status(400).json({ message: "Post ID and Tag ID are required." });
+    }
+
+    try {
+        const tagResult = await pool.query(
+            "SELECT * FROM tags WHERE id = $1 AND approved = TRUE",
+            [tagId]
+        );
+
+        if (tagResult.rowCount === 0) {
+            res.status(404).json({ message: "Tag not found or not approved." });
+            return;
+        }
+
+        await pool.query(
+            "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
+            [postId, tagId]
+        );
+
+        res.status(200).json({ message: "Tag linked to post successfully." });
+    } catch (error) {
+        console.error("Error linking tag to post:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
+const approveTag = async (req: Request<{ tagId: string }, {}, {}>, res: Response) => {
+    const tagId = Number(req.params.tagId);
+
+    if (!tagId) {
+        return res.status(400).json({ message: "Tag ID is required." });
+    }
+
+    try {
+        // Approve the tag
+        const tagResult = await pool.query("UPDATE tags SET approved = TRUE WHERE id = $1 RETURNING *", [tagId]);
+        if (tagResult.rowCount === 0) {
+            return res.status(404).json({ message: "Tag not found." });
+        }
+        const tagName = tagResult.rows[0].name;
+
+        const postResult = await pool.query(
+            "SELECT id FROM posts WHERE pending_tag_name = $1",
+            [tagName]
+        );
+
+        for (const post of postResult.rows) {
+            await pool.query(
+                "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                [post.id, tagId]
+            );
+        }
+
+        await pool.query(
+            "UPDATE posts SET pending_tag_name = NULL WHERE pending_tag_name = $1",
+            [tagName]
+        );
+
+        res.status(200).json({ message: "Tag approved and linked to posts successfully." });
+    } catch (error) {
+        console.error("Error approving tag:", error);
+        res.status(500).json({ message: "Internal server error" });
     }
 };
 
@@ -836,5 +943,6 @@ export {
     viewAllReports, resolveReport,
     viewAllBlockedUsers, helpBlockUser, helpUnblockUser,
     viewAllUsersBrowsingHistory, viewUserBrowsingHistory, deleteUserBrowsingHistories, deleteBrowsingHistory, getBrowsingAnalytics, getBrowsingHistorySummary,
-    viewAllBookmarks, viewBookmarkStatistics, deleteUserBookmarkById
+    viewAllBookmarks, viewBookmarkStatistics, deleteUserBookmarkById,
+    createTag, approveTag, linkTagToPost
 };

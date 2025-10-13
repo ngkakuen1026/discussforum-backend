@@ -108,19 +108,15 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
         const categoryResult = await pool.query(
             "SELECT * FROM categories WHERE id = $1",
             [categoryId]
-        )
+        );
 
         if (categoryResult.rowCount === 0) {
             res.status(404).json({ message: "Category not found" });
             return;
         }
 
-        const newPost = await pool.query(
-            "INSERT INTO posts (user_id, title, content, category_id, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *",
-            [userId, title, content, categoryId]
-        );
-
         let tagId = null;
+        let tagApproved = false;
 
         if (tag) {
             const tagResult = await pool.query(
@@ -130,22 +126,31 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
 
             if (tagResult.rows.length > 0) {
                 tagId = tagResult.rows[0].id;
+                tagApproved = tagResult.rows[0].approved;
             } else {
                 const newTagResult = await pool.query(
                     "INSERT INTO tags (name, approved, user_id) VALUES ($1, FALSE, $2) RETURNING *",
                     [tag, userId]
                 );
-                tagId = newTagResult.rows[0].id; 
+                tagId = newTagResult.rows[0].id;
+                tagApproved = false;
             }
+        }
 
-            // Link the tag to the post
+        // Insert post, with pending_tag_name if tag exists and not approved
+        const newPost = await pool.query(
+            "INSERT INTO posts (user_id, title, content, category_id, created_at, pending_tag_name) VALUES ($1, $2, $3, $4, NOW(), $5) RETURNING *",
+            [userId, title, content, categoryId, tag && !tagApproved ? tag : null]
+        );
+
+        // Only link tag if approved
+        if (tag && tagApproved && tagId) {
             await pool.query(
                 "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
                 [newPost.rows[0].id, tagId]
             );
         }
 
-        // Retrieve all the followers of the user who created the post 
         const followers = await pool.query(
             "SELECT follower_id FROM user_following WHERE followed_id = $1",
             [userId]
@@ -154,7 +159,7 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
         const userResult = await pool.query(
             "SELECT username FROM users WHERE id = $1",
             [userId]
-        )
+        );
 
         const userName = userResult.rows[0]?.username;
         const postCreatedTime = formatDate(newPost.rows[0].created_at);
@@ -162,7 +167,6 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
         for (const follower of followers.rows) {
             const followerId = follower.follower_id;
             const notificationMessage = `User ${userName} created a new post: ${title} at ${postCreatedTime}.`;
-
             await createNotification(followerId, notificationMessage, 'post');
         }
 
