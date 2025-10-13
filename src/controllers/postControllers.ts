@@ -97,7 +97,7 @@ const viewAllOwnPosts = async (req: Request, res: Response) => {
 // Create Post (Registered Users)
 const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Response) => {
     const userId = req.user!.id;
-    const { title, content, categoryId } = req.body;
+    const { title, content, categoryId, tag } = req.body;
 
     try {
         if (!title || !content || !categoryId) {
@@ -119,6 +119,31 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
             "INSERT INTO posts (user_id, title, content, category_id, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *",
             [userId, title, content, categoryId]
         );
+
+        let tagId = null;
+
+        if (tag) {
+            const tagResult = await pool.query(
+                "SELECT * FROM tags WHERE name = $1",
+                [tag]
+            );
+
+            if (tagResult.rows.length > 0) {
+                tagId = tagResult.rows[0].id;
+            } else {
+                const newTagResult = await pool.query(
+                    "INSERT INTO tags (name, approved, user_id) VALUES ($1, FALSE, $2) RETURNING *",
+                    [tag, userId]
+                );
+                tagId = newTagResult.rows[0].id; 
+            }
+
+            // Link the tag to the post
+            await pool.query(
+                "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
+                [newPost.rows[0].id, tagId]
+            );
+        }
 
         // Retrieve all the followers of the user who created the post 
         const followers = await pool.query(

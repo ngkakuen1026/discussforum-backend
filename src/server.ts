@@ -14,6 +14,7 @@ import reportRoutes from "./routes/reportRoutes";
 import userBlockedRoutes from "./routes/userBlockedRoutes"
 import browsingHistoriesRoutes from "./routes/browsingHistoryRoutes";
 import bookmarkRoutes from "./routes/bookmarkRoutes";
+import tagRoutes from "./routes/tagRoutes";
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use(`${API_BASE_PATH}/reports`, reportRoutes);
 app.use(`${API_BASE_PATH}/user-blocked`, userBlockedRoutes);
 app.use(`${API_BASE_PATH}/browsing-history`, browsingHistoriesRoutes);
 app.use(`${API_BASE_PATH}/bookmarks`, bookmarkRoutes);
+app.use(`${API_BASE_PATH}/tags`, tagRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).send({ message: "Server is healthy!!!" });

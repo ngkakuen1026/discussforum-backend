@@ -1,7 +1,8 @@
 export interface CreatePostRequestBody {
     title: string;
     content: string;
-    categoryId?: number;
+    categoryId: number;
+    tag?: string;
 }
 
 export interface VoteRequestBody {
