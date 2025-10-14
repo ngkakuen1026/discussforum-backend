@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { addCategory, addParentCategory, approveTag, createTag, deleteBrowsingHistory, deleteCategory, deleteParentCategory, deleteUserAccount, deleteUserBookmarkById, deleteUserBrowsingHistories, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, getBrowsingAnalytics, getBrowsingHistorySummary, helpBlockUser, helpUnblockUser, linkTagToPost, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllBookmarks, viewAllReports, viewAllUsers, viewAllUsersBrowsingHistory, viewBookmarkStatistics, viewUserBrowsingHistory, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, addParentCategory, approveTag, createTag, deleteBrowsingHistory, deleteCategory, deleteParentCategory, deleteTag, deleteUserAccount, deleteUserBookmarkById, deleteUserBrowsingHistories, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, getBrowsingAnalytics, getBrowsingHistorySummary, helpBlockUser, helpUnblockUser, linkTagToPost, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllBookmarks, viewAllReports, viewAllUsers, viewAllUsersBrowsingHistory, viewBookmarkStatistics, viewUserBrowsingHistory, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -68,5 +68,6 @@ router.delete("/bookmarks/bookmark/:bookmarkId", isAuthenticated, isAdmin, delet
 router.post("/tags/new-tag", isAuthenticated, isAdmin, createTag);
 router.post("/tags/link-tag-to-post", isAuthenticated, isAdmin, linkTagToPost);
 router.patch("/tags/tag/:tagId", isAuthenticated, isAdmin, approveTag);
+router.delete("/tags/tag/:tagId", isAuthenticated, isAdmin, deleteTag);
 
 export default router;

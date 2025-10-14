@@ -898,14 +898,16 @@ const approveTag = async (req: Request<{ tagId: string }, {}, {}>, res: Response
     const tagId = Number(req.params.tagId);
 
     if (!tagId) {
-        return res.status(400).json({ message: "Tag ID is required." });
+        res.status(400).json({ message: "Tag ID is required." });
+        return;
     }
 
     try {
         // Approve the tag
         const tagResult = await pool.query("UPDATE tags SET approved = TRUE WHERE id = $1 RETURNING *", [tagId]);
         if (tagResult.rowCount === 0) {
-            return res.status(404).json({ message: "Tag not found." });
+            res.status(404).json({ message: "Tag not found." });
+            return;
         }
         const tagName = tagResult.rows[0].name;
 
@@ -933,6 +935,32 @@ const approveTag = async (req: Request<{ tagId: string }, {}, {}>, res: Response
     }
 };
 
+const deleteTag = async (req: Request, res: Response) => {
+    const tagId = Number(req.params.tagId);
+
+    if (!tagId) {
+        res.status(400).json({ message: "Tag ID is required." });
+        return;
+    }
+
+    try {
+        const result = await pool.query(
+            "DELETE FROM tags WHERE id = $1",
+            [tagId]
+        );
+
+        if (result.rowCount === 0) {
+            res.status(404).json({ message: "Tag not found." });
+            return;
+        }
+
+        res.status(200).json({ message: `Tag ${tagId} removed successfully.` });
+    } catch (error) {
+        console.error("Error removing tag:", error);
+        res.status(500).json({ message: "Internal server error." });
+    }
+}
+
 export {
     viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount,
     deleteUserPost,
@@ -944,5 +972,5 @@ export {
     viewAllBlockedUsers, helpBlockUser, helpUnblockUser,
     viewAllUsersBrowsingHistory, viewUserBrowsingHistory, deleteUserBrowsingHistories, deleteBrowsingHistory, getBrowsingAnalytics, getBrowsingHistorySummary,
     viewAllBookmarks, viewBookmarkStatistics, deleteUserBookmarkById,
-    createTag, approveTag, linkTagToPost
+    createTag, approveTag, linkTagToPost, deleteTag
 };
