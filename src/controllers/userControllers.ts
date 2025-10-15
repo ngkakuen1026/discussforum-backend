@@ -79,8 +79,9 @@ const editProfile = async (req: Request<{}, {}, EditProfileRequestBody>, res: Re
 
 // Edit Own Password (Registered Users)
 const editPassword = async (req: Request<{}, {}, EditPasswordRequestBody>, res: Response) => {
+    const userId = req.user!.id;
+
     try {
-        const userId = req.user!.id;
         const { oldPassword, newPassword } = req.body;
 
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
@@ -136,7 +137,7 @@ const uploadProfileImage = async (req: Request, res: Response) => {
         if (currentUser.profile_image) {
             const publicId = extractPublicId(currentUser.profile_image);
             if (publicId) {
-                await cloudinary.uploader.destroy(publicId); 
+                await cloudinary.uploader.destroy(publicId);
             }
         }
 

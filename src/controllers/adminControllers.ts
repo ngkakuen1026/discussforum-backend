@@ -7,6 +7,7 @@ import { extractPublicId } from "../utils/extractCloudinaryUrl";
 import { addCategoryRequestBody, addParentCategoryRequestBody, editCategoryRequestBody } from '../types/categoryTypes';
 import { ResolveReportRequestBody } from '../types/reportTypes';
 import { CreateTagRequestBody, LinkTagToPostRequestBody } from '../types/tagTypes';
+import { createNotification } from '../utils/notificationUtils';
 
 //Users db table related controllers
 const viewAllUsers = async (req: Request, res: Response) => {
@@ -57,7 +58,7 @@ const viewUserProfile = async (req: Request<{ userId: string }, {}, {}>, res: Re
 }
 
 const editUserProfile = async (req: Request<{ userId: string }, {}, EditProfileRequestBody>, res: Response) => {
-    const userId = req.params.userId;
+    const userId = Number(req.params.userId);
 
     try {
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
@@ -83,6 +84,13 @@ const editUserProfile = async (req: Request<{ userId: string }, {}, EditProfileR
             [username, first_name, last_name, phone, gender, bio, userId]
         );
 
+        // Notify user
+        const adminId = req.user!.id;
+        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        const adminName = adminResult.rows[0].username;
+        const notificationMessage = `Your profile has been edited by admin ${adminName}.`;
+        await createNotification(userId, notificationMessage, 'profile_edited', userId);
+
         res.status(200).json({ user: result.rows[0] });
     } catch (error) {
         console.error(error);
@@ -91,7 +99,7 @@ const editUserProfile = async (req: Request<{ userId: string }, {}, EditProfileR
 };
 
 const uploadUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
-    const userId = req.params.userId;
+    const userId = Number(req.params.userId);
 
     try {
         if (!req.file) {
@@ -130,6 +138,13 @@ const uploadUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, 
             [cloudinaryResult.secure_url, userId]
         );
 
+        // Notify user
+        const adminId = req.user!.id;
+        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        const adminName = adminResult.rows[0].username;
+        const notificationMessage = `Your profile image has been changed by admin ${adminName}.`;
+        await createNotification(userId, notificationMessage, 'profile_image_changed', userId);
+
         res.status(200).json({
             message: "Image uploaded and user updated successfully",
             user: updateResult.rows[0]
@@ -144,7 +159,7 @@ const uploadUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, 
 };
 
 const deleteUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
-    const userId = req.params.userId;
+    const userId = Number(req.params.userId);
 
     try {
         const userResult = await pool.query(
@@ -173,6 +188,13 @@ const deleteUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, 
 
         await pool.query("UPDATE users SET profile_image = NULL WHERE id = $1", [userId]);
 
+        // Notify user
+        const adminId = req.user!.id;
+        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        const adminName = adminResult.rows[0].username;
+        const notificationMessage = `Your profile image has been deleted by admin ${adminName}.`;
+        await createNotification(userId, notificationMessage, 'profile_image_deleted', userId);
+
         res.status(200).json({ message: "Image deleted successfully" });
 
     } catch (error) {
@@ -183,7 +205,7 @@ const deleteUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, 
 }
 
 const deleteUserAccount = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
-    const userId = req.params.userId;
+    const userId = Number(req.params.userId);
 
     try {
         const userResult = await pool.query("SELECT profile_image FROM users WHERE id = $1", [userId]);
@@ -193,8 +215,22 @@ const deleteUserAccount = async (req: Request<{ userId: string }, {}, {}>, res: 
             return;
         }
 
-        const publicId = extractPublicId(userResult.rows[0].profile_image);
+        const deletedUserName = userResult.rows[0].username;
 
+        const followersResult = await pool.query(
+            "SELECT follower_id FROM user_following WHERE followed_id = $1",
+            [userId]
+        );
+        const adminId = req.user!.id;
+        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        const adminName = adminResult.rows[0].username;
+
+        for (const follower of followersResult.rows) {
+            const notificationMessage = `User ${deletedUserName} has been deleted by admin ${adminName}.`;
+            await createNotification(follower.follower_id, notificationMessage, 'user_deleted', userId);
+        }
+
+        const publicId = extractPublicId(userResult.rows[0].profile_image);
         if (publicId) {
             try {
                 await cloudinary.uploader.destroy(publicId);
@@ -214,7 +250,7 @@ const deleteUserAccount = async (req: Request<{ userId: string }, {}, {}>, res: 
 
 //Posts db table related controllers
 const deleteUserPost = async (req: Request<{ postId: string }, {}, {}>, res: Response) => {
-    const postId = req.params.postId;
+    const postId = Number(req.params.postId);
 
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
@@ -223,6 +259,17 @@ const deleteUserPost = async (req: Request<{ postId: string }, {}, {}>, res: Res
             res.status(404).json({ message: "Post not found" });
             return;
         }
+
+        const postOwnerId = postResult.rows[0].user_id;
+        const postTitle = postResult.rows[0].title;
+
+        // Get admin username
+        const adminId = req.user!.id;
+        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        const adminName = adminResult.rows[0].username;
+
+        const notificationMessage = `Your post "${postTitle}" has been deleted by admin ${adminName}.`;
+        await createNotification(postOwnerId, notificationMessage, 'post_deleted', postId);
 
         await pool.query("DELETE FROM posts WHERE id = $1", [postId]);
 
@@ -235,7 +282,7 @@ const deleteUserPost = async (req: Request<{ postId: string }, {}, {}>, res: Res
 
 //Comments db table related controllers
 const deleteUserComment = async (req: Request<{ commentId: string }, {}, {}>, res: Response) => {
-    const commentId = req.params.commentId;
+    const commentId = Number(req.params.commentId);
 
     try {
         const commentResult = await pool.query("SELECT * FROM comments WHERE id = $1", [commentId]);
@@ -244,6 +291,17 @@ const deleteUserComment = async (req: Request<{ commentId: string }, {}, {}>, re
             res.status(404).json({ message: "Comment not found" });
             return;
         }
+
+        const commentOwnerId = commentResult.rows[0].user_id;
+        const commentContent = commentResult.rows[0].content;
+
+        // Get admin username
+        const adminId = req.user!.id;
+        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        const adminName = adminResult.rows[0].username;
+
+        const notificationMessage = `Your comment "${commentContent}" has been deleted by admin ${adminName}.`;
+        await createNotification(commentOwnerId, notificationMessage, 'comment_deleted', commentId);
 
         await pool.query("DELETE FROM comments WHERE id = $1", [commentId]);
 
@@ -543,6 +601,20 @@ const resolveReport = async (req: Request<{ reportId: string }, {}, ResolveRepor
         if (result.rowCount === 0) {
             return res.status(404).json({ message: "Report not found." });
         }
+
+        // Get the report owner
+        const reportOwnerId = result.rows[0].user_id;
+
+        // Get admin username
+        const adminId = req.user!.id;
+        const adminResult = await pool.query(
+            "SELECT username FROM users WHERE id = $1",
+            [adminId]
+        );
+        const adminName = adminResult.rows[0].username;
+
+        const notificationMessage = `Your report #${reportId} has been resolved by admin ${adminName}.`;
+        await createNotification(reportOwnerId, notificationMessage, 'report_resolved', reportId);
 
         res.status(200).json({
             message: "Report resolved successfully.",
@@ -910,7 +982,15 @@ const approveTag = async (req: Request<{ tagId: string }, {}, {}>, res: Response
             return;
         }
         const tagName = tagResult.rows[0].name;
+        const tagCreatorId = tagResult.rows[0].user_id;
 
+        const adminId = req.user!.id;
+        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        const adminName = adminResult.rows[0].username;
+        const notificationMessage = `Your tag "${tagName}" has been approved by admin ${adminName}. Everyone can use the tag you created while posting now!`;
+        await createNotification(tagCreatorId, notificationMessage, 'tag_approved', tagId);
+
+        // Link tag to posts
         const postResult = await pool.query(
             "SELECT id FROM posts WHERE pending_tag_name = $1",
             [tagName]
@@ -944,22 +1024,29 @@ const deleteTag = async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await pool.query(
-            "DELETE FROM tags WHERE id = $1",
-            [tagId]
-        );
-
-        if (result.rowCount === 0) {
+        const tagResult = await pool.query("SELECT name, user_id FROM tags WHERE id = $1", [tagId]);
+        if (tagResult.rowCount === 0) {
             res.status(404).json({ message: "Tag not found." });
             return;
         }
+        const tagName = tagResult.rows[0].name;
+        const tagCreatorId = tagResult.rows[0].user_id;
+
+        await pool.query("DELETE FROM tags WHERE id = $1", [tagId]);
+
+        // Notify tag creator
+        const adminId = req.user!.id;
+        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        const adminName = adminResult.rows[0].username;
+        const notificationMessage = `Your tag "${tagName}" has been deleted by admin ${adminName}.`;
+        await createNotification(tagCreatorId, notificationMessage, 'tag_deleted', tagId);
 
         res.status(200).json({ message: `Tag ${tagId} removed successfully.` });
     } catch (error) {
         console.error("Error removing tag:", error);
         res.status(500).json({ message: "Internal server error." });
     }
-}
+};
 
 export {
     viewAllUsers, searchUsers, viewUserProfile, editUserProfile, uploadUserProfileImage, deleteUserProfileImage, deleteUserAccount,
