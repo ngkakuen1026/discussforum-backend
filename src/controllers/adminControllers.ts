@@ -384,7 +384,7 @@ const deleteParentCategory = async (req: Request<{ parentCategoryId: string }, {
 
         await pool.query("UPDATE categories SET parent_id = NULL WHERE parent_id = $1", [parentCategoryId]);
         await pool.query("DELETE FROM parent_categories WHERE id = $1", [parentCategoryId]);
-        res.status(204).send();
+        res.status(200).json({ message: "Parent Category deleted successfully" });
     } catch (error) {
         console.error("Error deleting parent category:", error);
         res.status(500).json({ message: "Internal Server Error" });
@@ -482,7 +482,7 @@ const deleteCategory = async (req: Request<{ categoryId: string }, {}, {}>, res:
         }
 
         await pool.query("DELETE FROM categories WHERE id = $1", [categoryId]);
-        res.status(204).send();
+        res.status(200).json({ message: "Category deleted successfully" });
     } catch (error) {
         console.error("Error deleting category:", error);
         res.status(500).json({ message: "Internal Server Error" });
