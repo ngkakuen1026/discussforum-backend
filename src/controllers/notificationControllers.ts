@@ -62,7 +62,7 @@ const readNotifications = async (req: Request, res: Response) => {
 
 const deleteNotification = async (req: Request<{ notificationId: string }, {}, {}>, res: Response) => {
     const userId = req.user!.id;
-    const { notificationId } = req.params;
+    const notificationId  = Number(req.params.notificationId);
     try {
         const result = await pool.query(
             'DELETE FROM notifications WHERE id = $1 AND user_id = $2 RETURNING *',

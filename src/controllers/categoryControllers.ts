@@ -12,7 +12,7 @@ const getAllCategories = async (req: Request, res: Response) => {
 };
 
 const getCategoryById = async (req: Request<{ categoryId: string }, {}, {}>, res: Response) => {
-    const categoryId = req.params.categoryId;
+    const categoryId = Number(req.params.categoryId);
 
     try {
         const result = await pool.query("SELECT * FROM categories WHERE id = $1", [categoryId]);

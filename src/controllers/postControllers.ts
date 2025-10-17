@@ -37,7 +37,7 @@ const viewAllPosts = async (req: Request, res: Response) => {
 
 // View Single Post
 const viewPost = async (req: Request<{ postId: string }, {}, {}>, res: Response) => {
-    const postId = req.params.postId;
+    const postId = Number(req.params.postId);
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
         if (postResult.rows.length === 0) {
@@ -70,7 +70,7 @@ const searchPosts = async (req: Request, res: Response) => {
 
 // View All Posts by Category
 const viewPostsByCategory = async (req: Request<{ categoryId: string }, {}, {}>, res: Response) => {
-    const categoryId = req.params.categoryId;
+    const categoryId = Number(req.params.categoryId);
 
     try {
         const result = await pool.query("SELECT * FROM posts WHERE category_id = $1", [categoryId]);
@@ -194,7 +194,7 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
 // Delete Own Post (Registered Users)
 const deletePost = async (req: Request<{ postId: string }, {}, {}>, res: Response) => {
     const userId = req.user!.id;
-    const postId = req.params.postId;
+    const postId = Number(req.params.postId);
 
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1 AND user_id = $2", [postId, userId]);

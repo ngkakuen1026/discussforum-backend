@@ -12,7 +12,7 @@ const getAllParentCategories = async (req: Request, res: Response) => {
 };
 
 const getParentCategoryById = async (req: Request<{ parentCategoryId: string }, {}, {}>, res: Response) => {
-    const parentCategoryId = req.params.parentCategoryId;
+    const parentCategoryId = Number(req.params.parentCategoryId);
 
     try {
         const result = await pool.query("SELECT * FROM parent_categories WHERE id = $1", [parentCategoryId]);

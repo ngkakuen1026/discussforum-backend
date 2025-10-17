@@ -40,7 +40,7 @@ const searchUsers = async (req: Request, res: Response) => {
 }
 
 const viewUserProfile = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
-    const userId = req.params.userId;
+    const userId = Number(req.params.userId);
 
     try {
         const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
@@ -340,7 +340,7 @@ const addParentCategory = async (req: Request<{}, {}, addParentCategoryRequestBo
 }
 
 const editParentCategory = async (req: Request<{ parentCategoryId: string }, {}, editCategoryRequestBody>, res: Response) => {
-    const parentCategoryId = req.params.parentCategoryId;
+    const parentCategoryId = Number(req.params.parentCategoryId);
     const { name } = req.body;
 
     if (!name || name.length < 2) {
@@ -373,7 +373,7 @@ const editParentCategory = async (req: Request<{ parentCategoryId: string }, {},
 }
 
 const deleteParentCategory = async (req: Request<{ parentCategoryId: string }, {}, {}>, res: Response) => {
-    const parentCategoryId = req.params.parentCategoryId;
+    const parentCategoryId = Number(req.params.parentCategoryId);
 
     try {
         const categoryResult = await pool.query("SELECT * FROM parent_categories WHERE id = $1", [parentCategoryId]);
@@ -427,7 +427,7 @@ const addCategory = async (req: Request<{}, {}, addCategoryRequestBody>, res: Re
 };
 
 const editCategory = async (req: Request<{ categoryId: string }, {}, editCategoryRequestBody>, res: Response) => {
-    const categoryId = req.params.categoryId;
+    const categoryId = Number(req.params.categoryId);
     const { name, parent_id } = req.body;
 
     if (!name || name.length < 2) {
@@ -467,7 +467,7 @@ const editCategory = async (req: Request<{ categoryId: string }, {}, editCategor
 };
 
 const deleteCategory = async (req: Request<{ categoryId: string }, {}, {}>, res: Response) => {
-    const categoryId = req.params.categoryId;
+    const categoryId = Number(req.params.categoryId);
 
     try {
         const categoryResult = await pool.query("SELECT * FROM categories WHERE id = $1", [categoryId]);
@@ -491,7 +491,7 @@ const deleteCategory = async (req: Request<{ categoryId: string }, {}, {}>, res:
 
 //user_following db table related controllers
 const viewUserFollowers = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
-    const userId = req.params.userId;
+    const userId = Number(req.params.userId);
 
     try {
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
@@ -515,7 +515,7 @@ const viewUserFollowers = async (req: Request<{ userId: string }, {}, {}>, res: 
 }
 
 const viewUserFollowing = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
-    const userId = req.params.userId;
+    const userId = Number(req.params.userId);
 
     try {
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
@@ -539,7 +539,8 @@ const viewUserFollowing = async (req: Request<{ userId: string }, {}, {}>, res: 
 }
 
 const removeUserFollower = async (req: Request<{ userId: string, followerId: string }, {}, {}>, res: Response) => {
-    const { userId, followerId } = req.params;
+    const userId = Number(req.params.userId);
+    const followerId  = Number(req.params.followerId);
 
     if (userId === followerId) {
         res.status(400).json({ message: "You cannot remove yourself" });

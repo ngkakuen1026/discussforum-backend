@@ -5,7 +5,7 @@ import { createNotification } from '../utils/notificationUtils';
 
 // Get Votes for a Post
 const getVotes = async (req: Request<{ postId: string }>, res: Response) => {
-    const postId = req.params.postId;
+    const postId = Number(req.params.postId);
 
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);

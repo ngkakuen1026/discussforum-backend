@@ -8,7 +8,7 @@ import { extractPublicId } from '../utils/extractCloudinaryUrl';
 
 // View User Public Profile
 const viewUserProfile = async (req: Request, res: Response) => {
-    const userId = req.params.id;
+    const userId = Number(req.params.id);
 
     try {
         const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
