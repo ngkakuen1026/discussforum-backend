@@ -1,6 +1,6 @@
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
-import { deleteMultipleHistories, viewOwnBrowsingHistory } from '../controllers/browsingHIstoryControllers';
+import { deleteMultipleHistories, viewOwnBrowsingHistory } from '../controllers/browsingHistoryControllers';
 
 const router = express.Router();
 

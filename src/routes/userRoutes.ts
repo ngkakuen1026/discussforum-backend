@@ -12,7 +12,7 @@ router.get("/user-profile/:id", viewUserProfile);
 router.get("/profile/me", isAuthenticated, viewProfile);
 router.patch("/profile/me", isAuthenticated, editProfile);
 router.patch("/profile/password", isAuthenticated, editPassword);
-router.delete("/profile/:id", isAuthenticated, deleteAccount);
+router.delete("/profile/me", isAuthenticated, deleteAccount);
 router.post("/profile/me/profile-image", isAuthenticated, upload.single("profile_image"), uploadProfileImage);
 router.delete("/profile/me/profile-image", isAuthenticated, deleteProfileImage);
 
