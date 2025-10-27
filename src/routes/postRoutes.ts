@@ -11,7 +11,6 @@ const router = express.Router();
 router.get("/all-posts", attachUserIfExists, viewAllPosts);
 router.get("/post/:postId", attachUserIfExists, logPostHistory, viewPost);
 router.get("/search", searchPosts);
-router.get("/all-posts/:categoryId", viewPostsByCategory)
 
 // Public Route for post votes
 router.get("/votes/:postId", getVotes); 
@@ -20,6 +19,8 @@ router.get("/votes/:postId", getVotes);
 router.get("/all-posts/me", isAuthenticated, viewAllOwnPosts);
 router.post("/post", isAuthenticated, createPost);
 router.delete("/post/:postId", isAuthenticated, deletePost);
+
+router.get("/all-posts/category/:categoryId", viewPostsByCategory)
 
 // Protected Routes for post votes (Registered Users)
 router.post("/votes/:postId", isAuthenticated, votePost);
