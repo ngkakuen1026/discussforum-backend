@@ -22,7 +22,7 @@ const viewAllPosts = async (req: Request, res: Response) => {
         const postsResult = await pool.query(
             `
             SELECT * FROM posts 
-            ${userId && blockedUserIds.length > 0 ? "WHERE user_id != $1 AND user_id NOT IN (SELECT blocked_id FROM user_blocked WHERE blocker_id = $1)" : ""}
+            ${userId && blockedUserIds.length > 0 ? "WHERE user_id NOT IN (SELECT blocked_id FROM user_blocked WHERE blocker_id = $1)" : ""}
             ORDER BY created_at DESC
             `,
             userId ? [userId] : []
