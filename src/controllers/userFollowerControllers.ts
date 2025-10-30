@@ -3,6 +3,7 @@ import pool from '../db/db';
 import { createNotification } from '../utils/notificationUtils';
 
 const viewOwnFollowers = async (req: Request, res: Response) => {
+    console.log("GET /api/v1/user-following/followers/me called");
     const userId = req.user!.id;
     try {
         const result = await pool.query(
