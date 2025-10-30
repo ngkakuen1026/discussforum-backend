@@ -20,6 +20,10 @@ import poolDefault from '../../db/db';
 const pool = poolDefault as unknown as { query: jest.Mock };
 
 describe('Browsing History routes - integration tests (supertest) with mocked DB', () => {
+    beforeEach(() => {
+        jest.resetAllMocks();
+    });
+
     it('GET /api/v1/browsing-history/me (View own browsing histories) -> 200 and list of browsing history', async () => {
         pool.query.mockResolvedValueOnce({
             rows: [

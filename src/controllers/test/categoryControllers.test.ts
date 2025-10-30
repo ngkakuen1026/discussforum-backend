@@ -8,6 +8,10 @@ import poolDefault from '../../db/db';
 const pool = poolDefault as unknown as { query: jest.Mock };
 
 describe('Category routes - integration tests (supertest) with mocked DB', () => {
+    beforeEach(() => {
+        jest.resetAllMocks();
+    });
+    
     it('GET /api/v1/categories/all-categories (Get all categories) -> 200 and list of categories', async () => {
         pool.query.mockResolvedValueOnce({
             rows: [

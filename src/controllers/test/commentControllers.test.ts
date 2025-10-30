@@ -38,7 +38,6 @@ const pool = poolDefault as unknown as { query: jest.Mock };
 
 describe('Comment routes - integration tests (supertest) with mocked DB', () => {
     beforeEach(() => {
-        // reset mocks and queued mockResolvedValueOnce between tests
         jest.resetAllMocks();
     });
 

@@ -20,6 +20,10 @@ import poolDefault from '../../db/db';
 const pool = poolDefault as unknown as { query: jest.Mock };
 
 describe('Bookmark routes - integration tests (supertest) with mocked DB', () => {
+    beforeEach(() => {
+        jest.resetAllMocks();
+    });
+    
     it('GET /api/v1/bookmarks/me (View own bookmarks) -> 200 and list of bookmarks', async () => {
         pool.query.mockResolvedValueOnce({
             rows: [

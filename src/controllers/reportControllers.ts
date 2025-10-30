@@ -29,7 +29,12 @@ const reportContent = async (req: Request<{ contentId: string }, {}, ReportReque
 
         return res.status(201).json({
             message: "Report submitted successfully.",
-            report: reportResult.rows[0],
+            report: {
+                content_id: contentId, 
+                reason: reportResult.rows[0].reason, 
+                id: reportResult.rows[0].id, 
+                custom_reason: reportResult.rows[0].custom_reason,
+            },
         });
     } catch (error) {
         console.error("Error reporting content:", error);

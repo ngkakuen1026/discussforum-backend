@@ -21,6 +21,10 @@ import { create } from 'domain';
 const pool = poolDefault as unknown as { query: jest.Mock };
 
 describe('Notification routes - integration tests (supertest) with mocked DB', () => {
+    beforeEach(() => {
+        jest.resetAllMocks();
+    });
+    
     it('GET /api/v1/notifications/all-notifications/me (View own notifications) -> 200 and list of notifications', async () => {
         pool.query.mockResolvedValueOnce({
             rows: [
