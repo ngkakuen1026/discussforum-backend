@@ -23,7 +23,7 @@ const bCompare = bcrypt.compare as unknown as jest.Mock;
 const jwtSign = jwt.sign as unknown as jest.Mock;
 const jwtVerify = jwt.verify as unknown as jest.Mock;
 
-describe('Auth controllers (integration via supertest) - /api/v1/auth', () => {
+describe('Auth controllers - integration tests (supertest) with mocked DB', () => {
     beforeEach(() => {
         jest.resetAllMocks();
     });

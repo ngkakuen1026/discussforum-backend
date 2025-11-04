@@ -52,7 +52,7 @@ const fsUnlink = (fs as any).unlinkSync as jest.Mock;
 const fsExists = (fs as any).existsSync as jest.Mock;
 const extractPub = extractPublicId as jest.Mock;
 
-describe('User controllers - integration tests (supertest) + direct controller tests', () => {
+describe('User controllers - integration tests (supertest) with mocked DB + direct controller tests', () => {
     beforeEach(() => {
         jest.resetAllMocks();
     });

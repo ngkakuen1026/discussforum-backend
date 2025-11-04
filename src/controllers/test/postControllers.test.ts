@@ -169,7 +169,6 @@ describe('Post routes - integration tests (supertest) with mocked DB', () => {
 
   it('POST /api/v1/posts/post (Create Post) -> 404 when category not found', async () => {
     pool.query.mockResolvedValueOnce({ rowCount: 0 });
-
     const payload = { title: 'T', content: 'C', categoryId: 999 };
     const res = await request(app)
       .post('/api/v1/posts/post')

@@ -1,12 +1,12 @@
 import pool from '../db/db';
 import { Request, Response } from 'express';
-import { EditProfileRequestBody } from '../types/userTypes';
 import cloudinary from "../config/cloudinary";
 import fs from "fs";
-import { extractPublicId } from "../utils/extractCloudinaryUrl";
+import { EditProfileRequestBody } from '../types/userTypes';
 import { addCategoryRequestBody, addParentCategoryRequestBody, editCategoryRequestBody } from '../types/categoryTypes';
 import { ResolveReportRequestBody } from '../types/reportTypes';
 import { CreateTagRequestBody, LinkTagToPostRequestBody } from '../types/tagTypes';
+import { extractPublicId } from "../utils/extractCloudinaryUrl";
 import { createNotification } from '../utils/notificationUtils';
 
 //Users db table related controllers
@@ -162,22 +162,17 @@ const deleteUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, 
     const userId = Number(req.params.userId);
 
     try {
-        const userResult = await pool.query(
-            "SELECT * FROM users WHERE id = $1",
-            [userId]
-        );
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
 
         if (userResult.rows.length === 0) {
             res.status(404).json({ message: "User not found" });
             return;
         }
 
-        const imageResult = await pool.query(
-            "SELECT profile_image FROM users WHERE id = $1", [userId]
-        )
+        const imageResult = await pool.query("SELECT profile_image FROM users WHERE id = $1", [userId]);
 
         if (imageResult.rows.length === 0) {
-            res.status(200).json({ message: "Image not found" })
+            res.status(200).json({ message: "Image not found" });
             return;
         }
 
@@ -191,6 +186,11 @@ const deleteUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, 
         // Notify user
         const adminId = req.user!.id;
         const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
+        if (adminResult.rows.length === 0) {
+            res.status(404).json({ message: "Admin not found" });
+            return;
+        }
+
         const adminName = adminResult.rows[0].username;
         const notificationMessage = `Your profile image has been deleted by admin ${adminName}.`;
         await createNotification(userId, notificationMessage, 'profile_image_deleted', userId);
@@ -201,7 +201,6 @@ const deleteUserProfileImage = async (req: Request<{ userId: string }, {}, {}>, 
         console.error("Delete image error:", error);
         res.status(500).json({ message: "Internal Server Error" });
     }
-
 }
 
 const deleteUserAccount = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
@@ -350,13 +349,14 @@ const editParentCategory = async (req: Request<{ parentCategoryId: string }, {},
 
     try {
         const categoryResult = await pool.query("SELECT * FROM parent_categories WHERE id = $1", [parentCategoryId]);
+
         if (categoryResult.rowCount === 0) {
             res.status(404).json({ message: "Parent category not found" });
             return;
         }
 
         const duplicateCheck = await pool.query("SELECT * FROM parent_categories WHERE name ILIKE $1 AND id != $2", [name, parentCategoryId]);
-        if (duplicateCheck.rows.length > 0) {
+        if (duplicateCheck && duplicateCheck.rows.length > 0) {
             res.status(409).json({ message: "Another parent category with the same name already exists" });
             return;
         }
@@ -370,7 +370,7 @@ const editParentCategory = async (req: Request<{ parentCategoryId: string }, {},
         console.error("Error updating parent category:", error);
         res.status(500).json({ message: "Internal Server Error" });
     }
-}
+};
 
 const deleteParentCategory = async (req: Request<{ parentCategoryId: string }, {}, {}>, res: Response) => {
     const parentCategoryId = Number(req.params.parentCategoryId);
@@ -403,13 +403,14 @@ const addCategory = async (req: Request<{}, {}, addCategoryRequestBody>, res: Re
     if (parent_id) {
         const parentResult = await pool.query("SELECT * FROM parent_categories WHERE id = $1", [parent_id]);
         if (parentResult.rowCount === 0) {
-            return res.status(400).json({ message: "Invalid parent category ID" });
+            res.status(400).json({ message: "Invalid parent category ID" });
+            return;
         }
     }
 
     try {
         const categoryResult = await pool.query("SELECT * FROM categories WHERE name ILIKE $1", [name]);
-        if (categoryResult.rows.length > 0) {
+        if (categoryResult.rows && categoryResult.rows.length > 0) {
             res.status(409).json({ message: "Category already exists" });
             return;
         }
@@ -431,8 +432,7 @@ const editCategory = async (req: Request<{ categoryId: string }, {}, editCategor
     const { name, parent_id } = req.body;
 
     if (!name || name.length < 2) {
-        res.status(400).json({ message: "Category name is required and must be at least 2 characters long" });
-        return;
+        return res.status(400).json({ message: "Category name is required and must be at least 2 characters long" });
     }
 
     if (parent_id) {
@@ -445,24 +445,28 @@ const editCategory = async (req: Request<{ categoryId: string }, {}, editCategor
     try {
         const categoryResult = await pool.query("SELECT * FROM categories WHERE id = $1", [categoryId]);
         if (categoryResult.rowCount === 0) {
-            res.status(404).json({ message: "Category not found" });
-            return;
+            return res.status(404).json({ message: "Category not found" });
         }
-
+        
         const duplicateCheck = await pool.query("SELECT * FROM categories WHERE name ILIKE $1 AND id != $2", [name, categoryId]);
         if (duplicateCheck.rows.length > 0) {
-            res.status(409).json({ message: "Another category with the same name already exists" });
-            return;
+            return res.status(409).json({ message: "Another category with the same name already exists" });
         }
 
-        await pool.query("UPDATE categories SET name = $1, parent_id = $2 WHERE id = $3", [name.toUpperCase(), parent_id, categoryId]);
-        res.status(200).json({
+        const updateQuery = `
+            UPDATE categories SET name = $1${parent_id !== undefined ? ', parent_id = $2' : ''} WHERE id = $3
+        `;
+        const values = parent_id !== undefined ? [name.toUpperCase(), parent_id, categoryId] : [name.toUpperCase(), categoryId];
+
+        await pool.query(updateQuery, values);
+
+        return res.status(200).json({
             message: `Category updated successfully`,
             category: { id: categoryId, newName: name, newParentId: parent_id }
         });
     } catch (error) {
         console.error("Error updating category:", error);
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(500).json({ message: "Internal Server Error" });
     }
 };
 
@@ -496,8 +500,7 @@ const viewUserFollowers = async (req: Request<{ userId: string }, {}, {}>, res: 
     try {
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
         if (userResult.rowCount === 0) {
-            res.status(404).json({ message: "User not found" });
-            return;
+            return res.status(404).json({ message: "User not found" });
         }
 
         const followersResult = await pool.query(
@@ -507,12 +510,13 @@ const viewUserFollowers = async (req: Request<{ userId: string }, {}, {}>, res: 
              WHERE user_following.followed_id = $1`,
             [userId]
         );
-        res.status(200).json({ userFollowersCount: followersResult.rows.length, userFollowerList: followersResult.rows });
+
+        return res.status(200).json({ userFollowersCount: followersResult.rows.length, userFollowerList: followersResult.rows });
     } catch (error) {
         console.error("Error fetching followers:", error);
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(500).json({ message: "Internal Server Error" });
     }
-}
+};
 
 const viewUserFollowing = async (req: Request<{ userId: string }, {}, {}>, res: Response) => {
     const userId = Number(req.params.userId);
@@ -540,7 +544,7 @@ const viewUserFollowing = async (req: Request<{ userId: string }, {}, {}>, res: 
 
 const removeUserFollower = async (req: Request<{ userId: string, followerId: string }, {}, {}>, res: Response) => {
     const userId = Number(req.params.userId);
-    const followerId  = Number(req.params.followerId);
+    const followerId = Number(req.params.followerId);
 
     if (userId === followerId) {
         res.status(400).json({ message: "You cannot remove yourself" });
