@@ -6,6 +6,7 @@ import { extractUserMentions } from '../utils/extractUserMentions';
 
 const viewComments = async (req: Request<{ postId: string }>, res: Response) => {
     const postId = Number(req.params.postId);
+    const userId = req.user?.id;
 
     try {
         const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
@@ -13,7 +14,25 @@ const viewComments = async (req: Request<{ postId: string }>, res: Response) => 
             return res.status(404).json({ message: "Post not found" });
         }
 
-        const commentsResult = await pool.query("SELECT * FROM comments WHERE post_id = $1 ORDER BY created_at DESC", [postId]);
+        let blockedUserIds = [];
+        if (userId) {
+            const blockedResult = await pool.query(
+                "SELECT blocked_id FROM user_blocked WHERE blocker_id = $1",
+                [userId]
+            );
+            blockedUserIds = blockedResult.rows.map(row => row.blocked_id);
+        }
+
+        const commentsResult = await pool.query(
+            `
+            SELECT * FROM comments 
+            WHERE post_id = $1 
+            ${userId && blockedUserIds.length > 0 ? "AND user_id NOT IN (" + blockedUserIds.join(",") + ")" : ""}
+            ORDER BY created_at DESC
+            `,
+            [postId]
+        );
+
         res.status(200).json({ comments: commentsResult.rows });
 
     } catch (error) {

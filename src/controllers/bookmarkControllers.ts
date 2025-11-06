@@ -32,7 +32,7 @@ const viewBookmarks = async (req: Request, res: Response) => {
                 b.id, p.id, u.username, c.name
         `, [userId]);
 
-        res.status(200).json(bookmarks.rows);
+        res.status(200).json({bookmarks: bookmarks.rows});
     } catch (error) {
         console.error("Error fetching bookmarks:", error);
         res.status(500).json({ message: "Internal server error" });

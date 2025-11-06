@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 const blockUser = async (req: Request, res: Response) => {
     const blockerId = req.user!.id;
     const blockedId = Number(req.params.userId);
-    const { block_reason } = req.body;
+    const block_reason = req.body?.block_reason;
 
     if (blockerId === blockedId) {
         res.status(400).json({ message: 'You cannot block yourself' });

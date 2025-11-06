@@ -24,7 +24,7 @@ router.get("/posts/search-posts", isAuthenticated, isAdmin, searchPosts);
 router.delete("/posts/post/:postId", isAuthenticated, isAdmin, deleteUserPost);
 
 // Comment Routes (Admin access only)
-router.get("/comments/all-comments", isAuthenticated, isAdmin, viewComments);
+router.get("/comments/:postId/all-comments", isAuthenticated, isAdmin, viewComments);
 router.delete("/comments/comment/:commentId", isAuthenticated, isAdmin, deleteUserComment);
 
 // Parent Category Routes (Admin access only)
@@ -60,7 +60,7 @@ router.delete("/browsing-history/user-browsing-history/:userId", isAuthenticated
 router.delete("/browsing-history/:historyId", isAuthenticated, isAdmin, deleteBrowsingHistory);
 
 // Bookmark Routes (Admin access only)
-router.get("/bookmarks/all-user-bookmarks", isAuthenticated, isAdmin, viewAllBookmarks);
+router.get("/bookmarks/all-users-bookmarks", isAuthenticated, isAdmin, viewAllBookmarks);
 router.get("/bookmarks/statistics", isAuthenticated, isAdmin, viewBookmarkStatistics);
 router.delete("/bookmarks/bookmark/:bookmarkId", isAuthenticated, isAdmin, deleteUserBookmarkById);
 

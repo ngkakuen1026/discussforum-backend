@@ -60,7 +60,7 @@ const votePost = async (req: Request<{ postId: string }, {}, VoteRequestBody>, r
 
         const postOwnerId = postResult.rows[0].user_id;
         const notificationMessage = `User ${voterUsername} ${voteType === 1 ? 'liked' : 'disliked'} your post: ${postResult.rows[0].title}.`;
-        await createNotification(postOwnerId, notificationMessage, 'like', postId);
+        await createNotification(postOwnerId, notificationMessage, voteType === 1 ? 'like' : 'dislike', postId);
 
         res.status(200).json({ message: "Vote recorded successfully." });
     } catch (error) {

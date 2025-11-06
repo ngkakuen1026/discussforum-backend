@@ -29,7 +29,7 @@ const viewOwnBrowsingHistory = async (req: Request, res: Response) => {
             GROUP BY 
                 bh.post_id, p.title, c.name, p.created_at, u.username
         `, [userId]);
-        res.status(200).json(result.rows);
+        res.status(200).json({ browsingHistory: result.rows });
     } catch (error) {
         console.error("Error fetching browsing history:", error);
         res.status(500).json({ message: "Internal server error" });
