@@ -447,7 +447,7 @@ const editCategory = async (req: Request<{ categoryId: string }, {}, editCategor
         if (categoryResult.rowCount === 0) {
             return res.status(404).json({ message: "Category not found" });
         }
-        
+
         const duplicateCheck = await pool.query("SELECT * FROM categories WHERE name ILIKE $1 AND id != $2", [name, categoryId]);
         if (duplicateCheck.rows.length > 0) {
             return res.status(409).json({ message: "Another category with the same name already exists" });
@@ -670,9 +670,8 @@ const helpBlockUser = async (req: Request, res: Response) => {
             [blockerId, blockedId]
         );
 
-        if (existingBlock.rows.length > 0) {
-            res.status(400).json({ message: "Block relationship already exists." });
-            return;
+        if (existingBlock && existingBlock.rows && existingBlock.rows.length > 0) {
+            return res.status(400).json({ message: "Block relationship already exists." });
         }
 
         await pool.query(
@@ -722,7 +721,14 @@ const viewAllUsersBrowsingHistory = async (req: Request, res: Response) => {
 const viewUserBrowsingHistory = async (req: Request, res: Response) => {
     const userId = Number(req.params.userId);
     try {
-        const result = await pool.query("SELECT * FROM browsing_history WHERE user_id = $1", [userId]);
+
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (userResult.rowCount === 0) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        const result = await pool.query("SELECT * FROM browsing_history WHERE user_id = $1 ORDER BY visited_at DESC", [userId]);
         res.status(200).json(result.rows);
     } catch (error) {
         console.error("Error fetching user browsing history:", error);
@@ -731,8 +737,14 @@ const viewUserBrowsingHistory = async (req: Request, res: Response) => {
 };
 
 const deleteBrowsingHistory = async (req: Request, res: Response) => {
-    const historyId = req.params.historyId;
+    const historyId = Number(req.params.historyId);
     try {
+        const historyResult = await pool.query("SELECT * FROM browsing_history WHERE id = $1", [historyId]);
+        if (historyResult.rowCount === 0) {
+            res.status(404).json({ message: "Browsing entry not found." });
+            return;
+        }
+
         await pool.query("DELETE FROM browsing_history WHERE id = $1", [historyId]);
         res.status(200).json({ message: "Browsing entry deleted successfully." });
     } catch (error) {
@@ -751,6 +763,12 @@ const deleteUserBrowsingHistories = async (req: Request, res: Response) => {
     }
 
     try {
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (userResult.rowCount === 0) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
         const result = await pool.query(
             "DELETE FROM browsing_history WHERE user_id = $1 AND post_id = ANY($2::int[])",
             [userId, postIds]
@@ -830,8 +848,7 @@ const getBrowsingHistorySummary = async (req: Request, res: Response) => {
 const viewAllBookmarks = async (req: Request, res: Response) => {
     try {
         const bookmarks = await pool.query(`
-            SELECT 
-                b.id AS bookmark_id,
+            SELECT b.id AS bookmark_id,
                 b.user_id,
                 u.username AS user_name,
                 p.id AS post_id,
@@ -931,7 +948,7 @@ const createTag = async (req: Request<{}, {}, CreateTagRequestBody>, res: Respon
             [name, userId]
         );
 
-        res.status(201).json({
+        res.status(200).json({
             message: "Tag created successfully.",
             tag: result.rows[0],
         });
@@ -1030,12 +1047,14 @@ const deleteTag = async (req: Request, res: Response) => {
 
     try {
         const tagResult = await pool.query("SELECT name, user_id FROM tags WHERE id = $1", [tagId]);
+        console.log("Tag result:", tagResult);
         if (tagResult.rowCount === 0) {
             res.status(404).json({ message: "Tag not found." });
             return;
         }
-        const tagName = tagResult.rows[0].name;
-        const tagCreatorId = tagResult.rows[0].user_id;
+
+        const tagName = tagResult.rows[0]?.name;
+        const tagCreatorId = tagResult.rows[0]?.user_id;
 
         await pool.query("DELETE FROM tags WHERE id = $1", [tagId]);
 

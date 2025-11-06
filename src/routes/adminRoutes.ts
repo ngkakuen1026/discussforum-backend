@@ -60,7 +60,7 @@ router.delete("/browsing-history/user-browsing-history/:userId", isAuthenticated
 router.delete("/browsing-history/:historyId", isAuthenticated, isAdmin, deleteBrowsingHistory);
 
 // Bookmark Routes (Admin access only)
-router.get("/bookmarks/all-user-bookmarks", isAuthenticated, isAdmin, viewAllBookmarks);
+router.get("/bookmarks/all-users-bookmarks", isAuthenticated, isAdmin, viewAllBookmarks);
 router.get("/bookmarks/statistics", isAuthenticated, isAdmin, viewBookmarkStatistics);
 router.delete("/bookmarks/bookmark/:bookmarkId", isAuthenticated, isAdmin, deleteUserBookmarkById);
 
