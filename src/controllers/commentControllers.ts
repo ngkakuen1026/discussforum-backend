@@ -9,37 +9,85 @@ const viewComments = async (req: Request<{ postId: string }>, res: Response) => 
     const userId = req.user?.id;
 
     try {
-        const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
+        const postResult = await pool.query("SELECT id FROM posts WHERE id = $1", [postId]);
         if (postResult.rows.length === 0) {
             return res.status(404).json({ message: "Post not found" });
         }
+        const blockedUserIds: number[] = userId
+            ? (
+                await pool.query("SELECT blocked_id FROM user_blocked WHERE blocker_id = $1", [
+                    userId,
+                ])
+            ).rows.map((r) => r.blocked_id)
+            : [];
 
-        let blockedUserIds = [];
-        if (userId) {
-            const blockedResult = await pool.query(
-                "SELECT blocked_id FROM user_blocked WHERE blocker_id = $1",
-                [userId]
-            );
-            blockedUserIds = blockedResult.rows.map(row => row.blocked_id);
+        const whereConditions = ["c.post_id = $1"];
+        const queryParams: any[] = [postId];
+
+        if (blockedUserIds.length > 0) {
+            whereConditions.push(`c.user_id NOT IN (${blockedUserIds.map((_, i) => `$${i + 2}`).join(",")})`);
+            queryParams.push(...blockedUserIds);
         }
 
         const commentsResult = await pool.query(
             `
-            SELECT * FROM comments 
-            WHERE post_id = $1 
-            ${userId && blockedUserIds.length > 0 ? "AND user_id NOT IN (" + blockedUserIds.join(",") + ")" : ""}
-            ORDER BY created_at DESC
+                SELECT 
+                    c.id,
+                    c.post_id,
+                    c.user_id,
+                    c.content,
+                    c.created_at,
+                    c.parent_comment_id,
+                    pc.content AS parent_comment_content,
+                    pc.created_at AS parent_comment_created_at,
+                    pu.username AS parent_commenter_username,
+                    pu.is_admin AS parent_commenter_is_admin,
+                    pu.gender AS parent_commenter_gender,
+                    u.id AS commenter_id,
+                    u.username AS commenter_username,
+                    u.profile_image AS commenter_profile_image,
+                    u.is_admin AS commenter_is_admin,
+                    u.registration_date AS commenter_registration_date,
+                    u.gender AS commenter_gender
+                FROM comments c
+                LEFT JOIN comments pc ON c.parent_comment_id = pc.id
+                LEFT JOIN users pu ON pc.user_id = pu.id
+                LEFT JOIN users u ON c.user_id = u.id
+                WHERE ${whereConditions.join(" AND ")}
+                ORDER BY c.created_at ASC
             `,
-            [postId]
+            queryParams
         );
 
-        res.status(200).json({ comments: commentsResult.rows });
+        const comments = commentsResult.rows.map((comment, index) => {
+            const floorNumber = (index + 2).toString();
 
+            // Find parent's floor number
+            let parentFloorNumber: string | null = null;
+            if (comment.parent_comment_id) {
+                const parentIndex = commentsResult.rows.findIndex(
+                    (c) => c.id === comment.parent_comment_id
+                );
+                if (parentIndex !== -1) {
+                    parentFloorNumber = (parentIndex + 2).toString();
+                }
+            }
+
+            return {
+                ...comment,
+                floor_number: floorNumber,
+                parent_floor_number: parentFloorNumber,
+                parent_comment_content: comment.parent_comment_content || null,
+                parent_comment_username: comment.parent_comment_username || null,
+            };
+        });
+
+        res.status(200).json({ comments });
     } catch (error) {
         console.error("Error fetching comments:", error);
         res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 const createComment = async (req: Request<{ postId: string }, {}, CreateCommentRequestBody>, res: Response) => {
     const userId = req.user?.id;
@@ -119,7 +167,7 @@ const replyToComment = async (req: Request<{ commentId: string }, {}, CreateRepl
             [userId]
         )
 
-        const postId = commentResult.rows[0].id;
+        const postId = commentResult.rows[0].post_id;
         const titleResult = await pool.query(
             "SELECT title FROM posts WHERE id = $1",
             [postId]

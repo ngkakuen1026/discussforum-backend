@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
 import { isAdmin } from '../middleware/isAdmin';
 import upload from '../middleware/multer';
-import { addCategory, addParentCategory, approveTag, createTag, deleteBrowsingHistory, deleteCategory, deleteParentCategory, deleteTag, deleteUserAccount, deleteUserBookmarkById, deleteUserBrowsingHistories, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, getBrowsingAnalytics, getBrowsingHistorySummary, helpBlockUser, helpUnblockUser, linkTagToPost, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllBookmarks, viewAllReports, viewAllUsers, viewAllUsersBrowsingHistory, viewBookmarkStatistics, viewUserBrowsingHistory, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
+import { addCategory, addParentCategory, approveTag, createTag, deleteBrowsingHistory, deleteCategory, deleteParentCategory, deleteTag, deleteUserAccount, deleteUserBookmarkById, deleteUserBrowsingHistories, deleteUserComment, deleteUserPost, deleteUserProfileImage, editCategory, editParentCategory, editUserProfile, getBrowsingAnalytics, getBrowsingHistorySummary, helpBlockUser, helpUnblockUser, removeUserFollower, resolveReport, searchUsers, uploadUserProfileImage, viewAllBlockedUsers, viewAllBookmarks, viewAllPendingTags, viewAllReports, viewAllUsers, viewAllUsersBrowsingHistory, viewBookmarkStatistics, viewUserBrowsingHistory, viewUserFollowers, viewUserFollowing, viewUserProfile } from '../controllers/adminControllers';
 import { searchPosts, viewAllPosts, viewPost } from '../controllers/postControllers';
 import { viewComments } from '../controllers/commentControllers';
 
@@ -65,8 +65,8 @@ router.get("/bookmarks/statistics", isAuthenticated, isAdmin, viewBookmarkStatis
 router.delete("/bookmarks/bookmark/:bookmarkId", isAuthenticated, isAdmin, deleteUserBookmarkById);
 
 // Tag and Post Tags Routes (Admin access only)
+router.get("/tags/all-pending-tags", isAuthenticated, isAdmin, viewAllPendingTags);
 router.post("/tags/new-tag", isAuthenticated, isAdmin, createTag);
-router.post("/tags/link-tag-to-post", isAuthenticated, isAdmin, linkTagToPost);
 router.patch("/tags/tag/:tagId", isAuthenticated, isAdmin, approveTag);
 router.delete("/tags/tag/:tagId", isAuthenticated, isAdmin, deleteTag);
 

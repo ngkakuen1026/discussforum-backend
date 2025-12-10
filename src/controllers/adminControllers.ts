@@ -923,6 +923,25 @@ const deleteUserBookmarkById = async (req: Request<{ bookmarkId: string }, {}, {
 };
 
 //tag and post_tags db table related controllers
+const viewAllPendingTags = async (req: Request, res: Response) => {
+    try {
+        const result = await pool.query(`
+        SELECT tags.*, user.username 
+        FROM tags 
+        JOIN users ON tags.user_id = user.id 
+        WHERE approved = FALSE 
+        ORDER BY created_at DESC
+    `);
+        res.status(200).json({
+            message: "Tag created successfully.",
+            pendingTags: result.rows[0],
+        });
+    } catch (error) {
+        console.error("Error fetching pending tags:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 const createTag = async (req: Request<{}, {}, CreateTagRequestBody>, res: Response) => {
     const userId = req.user!.id;
     const { name } = req.body;
@@ -958,82 +977,50 @@ const createTag = async (req: Request<{}, {}, CreateTagRequestBody>, res: Respon
     }
 };
 
-const linkTagToPost = async (req: Request<{}, {}, LinkTagToPostRequestBody>, res: Response) => {
-    const { postId, tagId } = req.body;
-
-    if (!postId || !tagId) {
-        return res.status(400).json({ message: "Post ID and Tag ID are required." });
-    }
+const approveTag = async (req: Request<{ tagId: string }>, res: Response) => {
+    const tagId = Number(req.params.tagId);
+    const client = await pool.connect();
 
     try {
-        const tagResult = await pool.query(
-            "SELECT * FROM tags WHERE id = $1 AND approved = TRUE",
+        await client.query('BEGIN');
+
+        const result = await client.query(
+            `UPDATE tags SET approved = TRUE 
+            WHERE id = $1 AND approved = FALSE
+            RETURNING name, user_id`,
             [tagId]
         );
 
-        if (tagResult.rowCount === 0) {
-            res.status(404).json({ message: "Tag not found or not approved." });
-            return;
+        if (result.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: "Tag not found or already approved" });
         }
 
-        await pool.query(
-            "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
-            [postId, tagId]
+        const { name, user_id } = result.rows[0];
+
+        await client.query(`
+            INSERT INTO post_tags (post_id, tag_id)
+            SELECT id, $1 FROM posts 
+            WHERE pending_tag_name ILIKE $2
+            ON CONFLICT DO NOTHING
+        `, [tagId, name]);
+
+        await client.query(
+            `UPDATE posts SET pending_tag_name = NULL 
+       WHERE pending_tag_name ILIKE $1`,
+            [name]
         );
 
-        res.status(200).json({ message: "Tag linked to post successfully." });
-    } catch (error) {
-        console.error("Error linking tag to post:", error);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
-}
+        await client.query('COMMIT');
 
-const approveTag = async (req: Request<{ tagId: string }, {}, {}>, res: Response) => {
-    const tagId = Number(req.params.tagId);
+        await createNotification(user_id, `Your tag "${name}" was approved!`, 'tag_approved');
 
-    if (!tagId) {
-        res.status(400).json({ message: "Tag ID is required." });
-        return;
-    }
-
-    try {
-        // Approve the tag
-        const tagResult = await pool.query("UPDATE tags SET approved = TRUE WHERE id = $1 RETURNING *", [tagId]);
-        if (tagResult.rowCount === 0) {
-            res.status(404).json({ message: "Tag not found." });
-            return;
-        }
-        const tagName = tagResult.rows[0].name;
-        const tagCreatorId = tagResult.rows[0].user_id;
-
-        const adminId = req.user!.id;
-        const adminResult = await pool.query("SELECT username FROM users WHERE id = $1", [adminId]);
-        const adminName = adminResult.rows[0].username;
-        const notificationMessage = `Your tag "${tagName}" has been approved by admin ${adminName}. Everyone can use the tag you created while posting now!`;
-        await createNotification(tagCreatorId, notificationMessage, 'tag_approved', tagId);
-
-        // Link tag to posts
-        const postResult = await pool.query(
-            "SELECT id FROM posts WHERE pending_tag_name = $1",
-            [tagName]
-        );
-
-        for (const post of postResult.rows) {
-            await pool.query(
-                "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                [post.id, tagId]
-            );
-        }
-
-        await pool.query(
-            "UPDATE posts SET pending_tag_name = NULL WHERE pending_tag_name = $1",
-            [tagName]
-        );
-
-        res.status(200).json({ message: "Tag approved and linked to posts successfully." });
-    } catch (error) {
-        console.error("Error approving tag:", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.json({ message: "Tag approved and linked!" });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
 };
 
@@ -1083,5 +1070,5 @@ export {
     viewAllBlockedUsers, helpBlockUser, helpUnblockUser,
     viewAllUsersBrowsingHistory, viewUserBrowsingHistory, deleteUserBrowsingHistories, deleteBrowsingHistory, getBrowsingAnalytics, getBrowsingHistorySummary,
     viewAllBookmarks, viewBookmarkStatistics, deleteUserBookmarkById,
-    createTag, approveTag, linkTagToPost, deleteTag
+    viewAllPendingTags, createTag, approveTag, deleteTag
 };

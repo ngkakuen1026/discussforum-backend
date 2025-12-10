@@ -1,10 +1,12 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import fs from "fs";
 import pool from '../db/db';
 import { Request, Response } from 'express';
 import { LoginRequestBody, RegisterRequestBody } from '../types/authTypes';
+import cloudinary from '../config/cloudinary';
 
-const saltRoutds = 10;
+const saltRounds = 10;
 const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
 const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
 
@@ -22,35 +24,165 @@ const generateRefreshToken = (userPayload: object) => {
     return jwt.sign(userPayload, refreshTokenSecret, { expiresIn: "7d" });
 };
 
+const tempUploads = new Map<string, { url: string; public_id: string; expiresAt: number }>();
 
-const registerUser = async (req: Request<{}, {}, RegisterRequestBody>, res: Response) => {
-    const { username, email, password, first_name, last_name, phone, gender, bio, is_admin } = req.body;
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, data] of tempUploads.entries()) {
+        if (now > data.expiresAt) {
+            cloudinary.uploader.destroy(data.public_id, (error) => {
+                if (error) console.error("Failed to delete temp image:", error);
+            });
+            tempUploads.delete(id);
+        }
+    }
+}, 5 * 60 * 1000);
+
+const tempUploadImage = async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
     try {
-        const checkUsername = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        const checkEmail = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            folder: "discuss-forum/temp_uploads",
+            use_filename: true,
+            unique_filename: false,
+        });
 
-        if (checkUsername.rows.length > 0) {
-            res.status(400).json({ message: 'Username already exists' });
-            return;
+        fs.unlinkSync(req.file.path);
+
+        const tempId = crypto.randomUUID();
+        const expiresAt = Date.now() + 15 * 60 * 1000;
+
+        tempUploads.set(tempId, {
+            url: result.secure_url,
+            public_id: result.public_id,
+            expiresAt,
+        });
+
+        res.json({
+            tempId,
+            url: result.secure_url,
+            expiresIn: 15 * 60,
+        });
+    } catch (err) {
+        console.error("Temp upload failed:", err);
+        if (req.file) fs.unlinkSync(req.file.path);
+        res.status(500).json({ message: "Upload failed" });
+    }
+};
+
+const cleanupTempImage = async (req: Request, res: Response) => {
+    const { tempId } = req.body;
+    if (!tempId) return res.status(400).json({ message: "tempId required" });
+
+    const data = tempUploads.get(tempId);
+    if (data) {
+        await cloudinary.uploader.destroy(data.public_id);
+        tempUploads.delete(tempId);
+    }
+
+    res.json({ success: true });
+};
+
+const registerUser = async (req: Request<{}, {}, RegisterRequestBody & { temp_image_id?: string }>, res: Response) => {
+    const {
+        username,
+        email,
+        password,
+        first_name,
+        last_name,
+        phone,
+        gender,
+        bio,
+        temp_image_id,
+    } = req.body;
+
+    let finalImageUrl: string | null = null;
+
+    try {
+        const checkUsername = await pool.query('SELECT 1 FROM users WHERE username = $1', [username]);
+        const checkEmail = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
+
+        if (checkUsername.rows.length > 0) return res.status(400).json({ message: 'Username already exists' });
+        if (checkEmail.rows.length > 0) return res.status(400).json({ message: 'Email already exists' });
+
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        if (temp_image_id) {
+            const temp = tempUploads.get(temp_image_id);
+            if (!temp) {
+                return res.status(400).json({ message: "Invalid or expired image" });
+            }
+
+            const newPublicId = `discuss-forum/profile_images/user_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+            await cloudinary.uploader.rename(temp.public_id, newPublicId);
+
+            finalImageUrl = `https://res.cloudinary.com/${cloudinary.config().cloud_name}/image/upload/${newPublicId}`;
+
+            tempUploads.delete(temp_image_id);
         }
-        if (checkEmail.rows.length > 0) {
-            res.status(400).json({ message: 'Email already exists' });
-            return;
-        }
-
-        const hashedPassword = await bcrypt.hash(password, saltRoutds);
-
         const newUser = await pool.query(
-            "INSERT INTO users (username, email, password_hash, first_name, last_name, phone, gender, bio, is_admin) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
-            [username, email, hashedPassword, first_name, last_name, phone, gender, bio, is_admin]
+            `INSERT INTO users 
+            (username, email, password_hash, first_name, last_name, phone, gender, bio, profile_image, is_admin)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING id, username, email, first_name, last_name, phone, gender, bio, profile_image, registration_date`,
+            [
+                username,
+                email,
+                hashedPassword,
+                first_name ?? null,
+                last_name ?? null,
+                phone ?? null,
+                gender ?? null,
+                bio ?? null,
+                finalImageUrl,
+                false,
+            ]
         );
 
-        res.status(201).json({ message: 'User registered successfully', user: newUser.rows[0] });
-        console.log(`User ${username} with ID ${newUser.rows[0].id} registered successfully`);
+        const user = newUser.rows[0];
+
+        res.status(201).json({
+            message: 'User registered successfully',
+            user,
+        });
+
+        console.log(`User ${username} registered with ID ${user.id}`);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Internal Server Error" });
+        console.error("Registration error:", error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
+const checkUsername = async (req: Request, res: Response) => {
+    try {
+        const { username } = req.body;
+        if (!username) return res.status(400).json({ message: "Username required" });
+
+        const result = await pool.query('SELECT 1 FROM users WHERE username = $1', [username]);
+        if (result.rows.length > 0) {
+            return res.status(409).json({ message: "Username taken" });
+        }
+        res.status(200).json({ message: "Available" });
+    } catch (err) {
+        console.error("Username check error:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+const checkEmail = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: "Email required" });
+
+        const result = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
+        if (result.rows.length > 0) {
+            return res.status(409).json({ message: "Email taken" });
+        }
+        res.status(200).json({ message: "Available" });
+    } catch (err) {
+        console.error("Email check error:", err);
+        res.status(500).json({ message: "Server error" });
     }
 };
 
@@ -194,4 +326,4 @@ const refreshUserToken = async (req: Request, res: Response): Promise<any> => {
     }
 }
 
-export { registerUser, loginUser, logoutUser, refreshUserToken };
+export { registerUser, tempUploadImage, cleanupTempImage, checkUsername, checkEmail, loginUser, logoutUser, refreshUserToken };

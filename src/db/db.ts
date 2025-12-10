@@ -15,7 +15,8 @@ const pool = new Pool({
     max: 10,
     idleTimeoutMillis: 30000, 
     connectionTimeoutMillis: 2000,
-});
+    prepare: false
+}as any);
 
 pool.on("connect", () => {
     console.log("Database connected successfully");

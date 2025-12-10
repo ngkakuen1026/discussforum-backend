@@ -10,7 +10,7 @@ const router = express.Router();
 router.get("/:postId/all-comments", attachUserIfExists, viewComments);
 
 // Public Route for comment votes
-router.get("/votes/:commentId", getVotes);
+router.get("/votes/:commentId", attachUserIfExists, getVotes);
 
 // Protected Routes for comment (Registered Users)
 router.post("/:postId/comment", isAuthenticated, createComment);

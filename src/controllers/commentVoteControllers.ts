@@ -6,6 +6,7 @@ import { createNotification } from '../utils/notificationUtils';
 // Get Votes for a comment
 const getVotes = async (req: Request<{ commentId: string }>, res: Response) => {
     const commentId = Number(req.params.commentId);
+    const userId = req.user?.id;
 
     try {
         const commentResult = await pool.query("SELECT * FROM comments WHERE id = $1", [commentId]);
@@ -15,7 +16,27 @@ const getVotes = async (req: Request<{ commentId: string }>, res: Response) => {
         }
 
         const votesResult = await pool.query("SELECT vote_type, COUNT(*) as count FROM comment_votes WHERE comment_id = $1 GROUP BY vote_type", [commentId]);
-        res.status(200).json({ votes: votesResult.rows });
+        const response: any = {
+            votes: votesResult.rows.map(row => ({
+                vote_type: Number(row.vote_type),
+                count: Number(row.count)
+            }))
+        };
+
+        if (userId) {
+            const userVoteResult = await pool.query(
+                "SELECT vote_type FROM comment_votes WHERE comment_id = $1 AND user_id = $2",
+                [commentId, userId]
+            );
+
+            response.user_vote = userVoteResult.rows[0]
+                ? Number(userVoteResult.rows[0].vote_type)
+                : null;
+        } else {
+            response.user_vote = null;
+        }
+
+        res.status(200).json(response);
     } catch (error) {
         console.error("Error fetching comment votes:", error);
         res.status(500).json({ message: "Internal server error" });

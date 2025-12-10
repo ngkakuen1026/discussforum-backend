@@ -229,7 +229,7 @@ describe('User controllers - integration tests (supertest) with mocked DB + dire
     it('DELETE /api/v1/users/profile/:id (Delete own account) -> 404 when no user deleted', async () => {
         pool.query.mockResolvedValueOnce({ rowCount: 0 });
 
-        const res = await request(app).delete('/api/v1/users/profile/3').set('x-test-user', 'test-user');
+        const res = await request(app).delete('/api/v1/users/profile/me').set('x-test-user', 'test-user');
 
         expect(res.status).toBe(404);
         expect(res.body).toEqual({ message: 'User not found' });
@@ -238,7 +238,7 @@ describe('User controllers - integration tests (supertest) with mocked DB + dire
     it('DELETE /api/v1/users/profile/:id (Delete own account) -> 200 when account deleted', async () => {
         pool.query.mockResolvedValueOnce({ rowCount: 1 });
 
-        const res = await request(app).delete('/api/v1/users/profile/3').set('x-test-user', 'test-user');
+        const res = await request(app).delete('/api/v1/users/profile/me').set('x-test-user', 'test-user');
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual({ message: 'User account deleted successfully' });

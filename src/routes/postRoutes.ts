@@ -13,7 +13,7 @@ router.get("/post/:postId", attachUserIfExists, logPostHistory, viewPost);
 router.get("/search", searchPosts);
 
 // Public Route for post votes
-router.get("/votes/:postId", getVotes); 
+router.get("/votes/:postId", attachUserIfExists, getVotes); 
 
 // Protected Routes for post (Registered Users)
 router.get("/all-posts/me", isAuthenticated, viewAllOwnPosts);

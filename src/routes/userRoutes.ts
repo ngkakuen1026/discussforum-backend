@@ -6,7 +6,7 @@ import upload from '../middleware/multer';
 const router = express.Router();
 
 // Public Routes
-router.get("/user-profile/:id", viewUserProfile);
+router.get("/user-profile/:userId", viewUserProfile);
 
 // Protected Routes (Registered Users)
 router.get("/profile/me", isAuthenticated, viewProfile);

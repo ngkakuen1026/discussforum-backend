@@ -15,13 +15,16 @@ import userBlockedRoutes from './routes/userBlockedRoutes';
 import browsingHistoriesRoutes from './routes/browsingHistoryRoutes';
 import bookmarkRoutes from './routes/bookmarkRoutes';
 import tagRoutes from './routes/tagRoutes';
+import imageRoutes from "./routes/iamgeRoutes";
+import cors from 'cors';
 
 dotenv.config();
 
 const app: Application = express();
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ type: "application/json" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
@@ -43,6 +46,7 @@ app.use(`${API_BASE_PATH}/user-blocked`, userBlockedRoutes);
 app.use(`${API_BASE_PATH}/browsing-history`, browsingHistoriesRoutes);
 app.use(`${API_BASE_PATH}/bookmarks`, bookmarkRoutes);
 app.use(`${API_BASE_PATH}/tags`, tagRoutes);
+app.use(`${API_BASE_PATH}/images`, imageRoutes);
 
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).send({ message: 'Server is healthy!!!' });

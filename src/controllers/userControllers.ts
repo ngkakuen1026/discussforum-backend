@@ -8,7 +8,7 @@ import { extractPublicId } from '../utils/extractCloudinaryUrl';
 
 // View User Public Profile
 const viewUserProfile = async (req: Request, res: Response) => {
-    const userId = Number(req.params.id);
+    const userId = Number(req.params.userId);
 
     try {
         const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
@@ -16,8 +16,8 @@ const viewUserProfile = async (req: Request, res: Response) => {
             res.status(404).json({ message: "User not found" });
             return;
         }
-        const users = result.rows.map(({ password_hash, ...rest }) => rest);
-        res.status(200).json({ users });
+        const user = result.rows.map(({ password_hash, ...rest }) => rest);
+        res.status(200).json({ user: user[0] });
 
     } catch (error) {
         console.error("Error fetching user profile:", error);

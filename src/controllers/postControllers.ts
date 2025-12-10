@@ -5,12 +5,12 @@ import { createNotification } from '../utils/notificationUtils';
 import { formatDate } from '../utils/dateUtils';
 import { extractUserMentions } from '../utils/extractUserMentions';
 
-// View All Posts
+// View all posts
 const viewAllPosts = async (req: Request, res: Response) => {
     const userId = req.user?.id;
 
     try {
-        let blockedUserIds = [];
+        let blockedUserIds: number[] = [];
         if (userId) {
             const blockedResult = await pool.query(
                 "SELECT blocked_id FROM user_blocked WHERE blocker_id = $1",
@@ -19,16 +19,25 @@ const viewAllPosts = async (req: Request, res: Response) => {
             blockedUserIds = blockedResult.rows.map(row => row.blocked_id);
         }
 
-        const postsResult = await pool.query(
-            `
-            SELECT * FROM posts 
-            ${userId && blockedUserIds.length > 0 ? "WHERE user_id NOT IN (SELECT blocked_id FROM user_blocked WHERE blocker_id = $1)" : ""}
-            ORDER BY created_at DESC
-            `,
-            userId ? [userId] : []
-        );
+        const query = `
+            SELECT p.* ,
+                u.id AS author_id,
+                u.username AS author_username,
+                u.profile_image AS author_profile_image,
+                u.is_admin AS author_is_admin,
+                u.registration_date AS author_registration_date,
+                u.gender AS author_gender
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE ($1::integer IS NULL OR p.user_id NOT IN (
+                SELECT blocked_id FROM user_blocked WHERE blocker_id = $1
+            ))
+            ORDER BY p.created_at DESC
+        `;
 
-        res.status(200).json({ posts: postsResult.rows });
+        const result = await pool.query(query, [userId || null]);
+
+        res.status(200).json({ posts: result.rows });
     } catch (error) {
         console.error("Error fetching posts:", error);
         res.status(500).json({ message: "Internal server error" });
@@ -39,7 +48,19 @@ const viewAllPosts = async (req: Request, res: Response) => {
 const viewPost = async (req: Request<{ postId: string }, {}, {}>, res: Response) => {
     const postId = Number(req.params.postId);
     try {
-        const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [postId]);
+        const postResult = await pool.query(`
+            SELECT 
+                p.*,
+                u.id AS author_id,
+                u.username AS author_username,
+                u.profile_image AS author_profile_image,
+                u.is_admin AS author_is_admin,
+                u.registration_date AS author_registration_date,
+                u.gender AS author_gender
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.id = $1`,
+            [postId]);
         if (postResult.rows.length === 0) {
             return res.status(404).json({ message: "Post not found" });
         }
@@ -60,7 +81,20 @@ const searchPosts = async (req: Request, res: Response) => {
     }
 
     try {
-        const searchResult = await pool.query(`SELECT * FROM posts WHERE posts.title ILIKE $1 OR posts.content ILIKE $1`, [`%${query}%`]);
+        const searchResult = await pool.query(`
+            SELECT 
+                p.*,
+                u.id AS author_id,
+                u.username AS author_username,
+                u.profile_image AS author_profile_image,
+                u.is_admin AS author_is_admin,
+                u.registration_date AS author_registration_date,
+                u.gender AS author_gender
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.title ILIKE $1 OR p.content ILIKE $1
+            ORDER BY p.created_at DESC`,
+            [`%${query}%`]);
         res.status(200).json({ posts: searchResult.rows });
     } catch (error) {
         console.error("Error searching posts:", error);
@@ -73,7 +107,20 @@ const viewPostsByCategory = async (req: Request<{ categoryId: string }, {}, {}>,
     const categoryId = Number(req.params.categoryId);
 
     try {
-        const result = await pool.query("SELECT * FROM posts WHERE category_id = $1", [categoryId]);
+        const result = await pool.query(`
+            SELECT 
+                p.*,
+                u.id AS author_id,
+                u.username AS author_username,
+                u.profile_image AS author_profile_image,
+                u.is_admin AS author_is_admin,
+                u.registration_date AS author_registration_date,
+                u.gender AS author_gender
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.category_id = $1
+            ORDER BY p.created_at DESC`,
+            [categoryId]);
         res.status(200).json({ posts: result.rows });
     } catch (error) {
         console.error("Error fetching posts by category:", error);
@@ -99,95 +146,108 @@ const createPost = async (req: Request<{}, {}, CreatePostRequestBody>, res: Resp
     const userId = req.user!.id;
     const { title, content, categoryId, tag } = req.body;
 
+    const client = await pool.connect();
+
     try {
+        await client.query('BEGIN');
+
         if (!title || !content || !categoryId) {
-            res.status(400).json({ message: "Title, content and categoryId are required." });
-            return;
+            return res.status(400).json({ message: "Title, content and categoryId are required." });
         }
 
-        const categoryResult = await pool.query(
-            "SELECT * FROM categories WHERE id = $1",
+        const categoryResult = await client.query(
+            "SELECT id FROM categories WHERE id = $1",
             [categoryId]
         );
-
         if (categoryResult.rowCount === 0) {
-            res.status(404).json({ message: "Category not found" });
-            return;
+            return res.status(404).json({ message: "Category not found" });
         }
 
-        let tagId = null;
+        let tagId: number | null = null;
         let tagApproved = false;
+        let normalizedTag: string | null = null;
 
-        if (tag) {
-            const tagResult = await pool.query(
-                "SELECT * FROM tags WHERE name = $1",
-                [tag]
-            );
-
-            if (tagResult.rows.length > 0) {
-                tagId = tagResult.rows[0].id;
-                tagApproved = tagResult.rows[0].approved;
-            } else {
-                const newTagResult = await pool.query(
-                    "INSERT INTO tags (name, approved, user_id) VALUES ($1, FALSE, $2) RETURNING *",
-                    [tag, userId]
-                );
-                tagId = newTagResult.rows[0].id;
-                tagApproved = false;
+        if (tag && typeof tag === 'string') {
+            normalizedTag = tag.trim();
+            if (normalizedTag === '') {
+                return res.status(400).json({ message: "Tag cannot be empty" });
             }
+
+            const tagResult = await client.query(`
+                INSERT INTO tags (name, user_id, approved)
+                VALUES ($1, $2, FALSE)
+                ON CONFLICT (name_lowercase) DO UPDATE 
+                SET name = EXCLUDED.name
+                RETURNING id, approved
+            `, [normalizedTag, userId]);
+
+            tagId = tagResult.rows[0].id;
+            tagApproved = tagResult.rows[0].approved;
         }
 
-        // Insert post, with pending_tag_name if tag exists and not approved
-        const newPost = await pool.query(
-            "INSERT INTO posts (user_id, title, content, category_id, created_at, pending_tag_name) VALUES ($1, $2, $3, $4, NOW(), $5) RETURNING *",
-            [userId, title, content, categoryId, tag && !tagApproved ? tag : null]
+        // Create the post
+        const newPostResult = await client.query(
+            `INSERT INTO posts 
+            (user_id, title, content, category_id, created_at, pending_tag_name)
+            VALUES ($1, $2, $3, $4, NOW(), $5)
+            RETURNING *`,
+            [userId, title, content, categoryId, tagId && !tagApproved ? normalizedTag : null]
         );
 
-        // Only link tag if approved
-        if (tag && tagApproved && tagId) {
-            await pool.query(
-                "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)",
-                [newPost.rows[0].id, tagId]
+        const newPost = newPostResult.rows[0];
+
+        if (tagId && tagApproved) {
+            await client.query(
+                `INSERT INTO post_tags (post_id, tag_id)
+                VALUES ($1, $2)`,
+                [newPost.id, tagId]
             );
         }
+
+        await client.query('COMMIT');
+
+        const userResult = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
+        const userName = userResult.rows[0]?.username;
 
         const followers = await pool.query(
             "SELECT follower_id FROM user_following WHERE followed_id = $1",
             [userId]
         );
 
-        const userResult = await pool.query(
-            "SELECT username FROM users WHERE id = $1",
-            [userId]
-        );
+        const postCreatedTime = formatDate(newPost.created_at);
 
-        const userName = userResult.rows[0]?.username;
-        const postCreatedTime = formatDate(newPost.rows[0].created_at);
-
-        for (const follower of followers.rows) {
-            const followerId = follower.follower_id;
-            const notificationMessage = `User ${userName} created a new post: ${title} at ${postCreatedTime}.`;
-            await createNotification(followerId, notificationMessage, 'post');
+        for (const { follower_id } of followers.rows) {
+            await createNotification(
+                follower_id,
+                `User ${userName} created a new post: ${title} at ${postCreatedTime}.`,
+                'post'
+            );
         }
 
         const mentions = extractUserMentions(content);
-
         for (const username of mentions) {
-            const userResult = await pool.query("SELECT id FROM users WHERE username = $1", [username]);
-            if (userResult.rows.length > 0) {
-                const mentionedUserId = userResult.rows[0].id;
-                const notificationMessage = `User ${userName} mentioned you in a post: "${title}".`;
-                await createNotification(mentionedUserId, notificationMessage, 'mention', newPost.rows[0].id);
+            const mentionedUser = await pool.query("SELECT id FROM users WHERE username = $1", [username]);
+            if (mentionedUser.rows.length > 0) {
+                await createNotification(
+                    mentionedUser.rows[0].id,
+                    `User ${userName} mentioned you in a post: "${title}".`,
+                    'mention',
+                    newPost.id
+                );
             }
         }
 
         res.status(201).json({
             message: "Post created successfully",
-            post: newPost.rows[0],
+            post: newPost,
         });
+
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error("Error creating post:", error);
         res.status(500).json({ message: "Internal Server Error" });
+    } finally {
+        client.release();
     }
 };
 

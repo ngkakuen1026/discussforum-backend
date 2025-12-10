@@ -11,10 +11,16 @@ const viewBookmarks = async (req: Request, res: Response) => {
                 b.id AS bookmark_id,
                 p.id AS post_id,
                 p.title AS post_title,
-                u.username AS author_name,
+                p.views AS post_view,
+                u.username AS author_username,
+                u.profile_image AS author_profile_image,
+                u.is_admin AS author_is_admin,
+                u.registration_date AS author_registration_date,
+                u.gender AS author_gender,
                 COALESCE(SUM(CASE WHEN pv.vote_type = 1 THEN 1 ELSE 0 END), 0) AS upvotes,
                 COALESCE(SUM(CASE WHEN pv.vote_type = -1 THEN 1 ELSE 0 END), 0) AS downvotes,
                 c.name AS category_name,
+                c.id AS category_id,
                 p.created_at AS post_created_at
             FROM 
                 bookmarks b
@@ -29,10 +35,16 @@ const viewBookmarks = async (req: Request, res: Response) => {
             WHERE 
                 b.user_id = $1
             GROUP BY 
-                b.id, p.id, u.username, c.name
+                    b.id, 
+                    p.id, p.title, p.created_at,
+                    u.username, u.profile_image, u.is_admin, u.registration_date, u.gender,
+                    c.name, c.id,
+                    b.created_at
+            ORDER BY 
+                b.created_at DESC
         `, [userId]);
 
-        res.status(200).json({bookmarks: bookmarks.rows});
+        res.status(200).json({ bookmarks: bookmarks.rows });
     } catch (error) {
         console.error("Error fetching bookmarks:", error);
         res.status(500).json({ message: "Internal server error" });
@@ -55,7 +67,7 @@ const addPostToBookmark = async (req: Request<{}, {}, AddBookmarkRequestBody>, r
         );
 
         if (current.rows.length > 0) {
-            res.status(400).json({ message: 'Post already bookmarked.' });
+            res.status(409).json({ message: 'Post already bookmarked.' });
             return;
         }
 
@@ -100,4 +112,31 @@ const removePostFromBookmark = async (req: Request, res: Response) => {
     }
 }
 
-export { viewBookmarks, addPostToBookmark, removePostFromBookmark };
+const removeMultipleBookmarks = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const postIds = req.body.data?.postIds || req.body.postIds;
+
+    console.log("Received postIds:", postIds);
+
+
+    if (!Array.isArray(postIds) || postIds.length === 0) {
+        return res.status(400).json({ message: "postIds array is required" });
+    }
+
+    try {
+        const result = await pool.query(
+            "DELETE FROM bookmarks WHERE user_id = $1 AND post_id = ANY($2::int[])",
+            [userId, postIds]
+        );
+
+        return res.status(200).json({
+            message: "Bookmarks removed",
+            deletedCount: result.rowCount,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+export { viewBookmarks, addPostToBookmark, removePostFromBookmark, removeMultipleBookmarks };
