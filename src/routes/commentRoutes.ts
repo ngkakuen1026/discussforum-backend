@@ -1,5 +1,5 @@
 import express from 'express';
-import { createComment, replyToComment, viewComments } from '../controllers/commentControllers';
+import { createComment, replyToComment, viewComments, viewUserCommentLength } from '../controllers/commentControllers';
 import { isAuthenticated } from '../middleware/auth';
 import { getVotes, voteComment } from '../controllers/commentVoteControllers';
 import attachUserIfExists from '../middleware/attachUserIfExists';
@@ -15,6 +15,8 @@ router.get("/votes/:commentId", attachUserIfExists, getVotes);
 // Protected Routes for comment (Registered Users)
 router.post("/:postId/comment", isAuthenticated, createComment);
 router.post("/:commentId/reply", isAuthenticated, replyToComment);
+
+router.get("/all-comments/user/:userId", viewUserCommentLength);
 
 // Protected Routes for comment votes (Registered Users)
 router.post("/votes/:commentId", isAuthenticated, voteComment);

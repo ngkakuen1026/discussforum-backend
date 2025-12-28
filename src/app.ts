@@ -16,6 +16,7 @@ import browsingHistoriesRoutes from './routes/browsingHistoryRoutes';
 import bookmarkRoutes from './routes/bookmarkRoutes';
 import tagRoutes from './routes/tagRoutes';
 import imageRoutes from "./routes/iamgeRoutes";
+import postDraftRoutes from "./routes/postDraftRoutes";
 import cors from 'cors';
 
 dotenv.config();
@@ -47,6 +48,7 @@ app.use(`${API_BASE_PATH}/browsing-history`, browsingHistoriesRoutes);
 app.use(`${API_BASE_PATH}/bookmarks`, bookmarkRoutes);
 app.use(`${API_BASE_PATH}/tags`, tagRoutes);
 app.use(`${API_BASE_PATH}/images`, imageRoutes);
+app.use(`${API_BASE_PATH}/post-drafts`, postDraftRoutes);
 
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).send({ message: 'Server is healthy!!!' });

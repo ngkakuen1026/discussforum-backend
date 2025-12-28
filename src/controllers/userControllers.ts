@@ -123,6 +123,12 @@ const uploadProfileImage = async (req: Request, res: Response) => {
             return;
         }
 
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ message: "Invalid file type. Only JPEG, PNG, WebP, GIF allowed." });
+        }
+
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
 
         if (userResult.rows.length === 0) {
@@ -205,6 +211,105 @@ const deleteProfileImage = async (req: Request, res: Response) => {
     }
 }
 
+// Upload Profile Banner (Registered Users)
+const uploadProfileBanner = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+
+    try {
+        if (!req.file) {
+            res.status(400).json({ message: "No file uploaded" });
+            return;
+        }
+
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ message: "Invalid file type. Only JPEG, PNG, WebP, GIF allowed." });
+        }
+
+        const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+
+        if (userResult.rows.length === 0) {
+            fs.unlinkSync(req.file.path);
+
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        const currentUser = userResult.rows[0];
+
+        if (currentUser.profile_banner) {
+            const publicId = extractPublicId(currentUser.profile_banner);
+            if (publicId) {
+                await cloudinary.uploader.destroy(publicId);
+            }
+        }
+
+        const cloudinaryResult = await cloudinary.uploader.upload(req.file.path, {
+            folder: "/discuss-forum/profile_banner",
+            use_filename: true,
+            unique_filename: false
+        });
+
+        fs.unlinkSync(req.file.path);
+
+        const updateResult = await pool.query(
+            "UPDATE users SET profile_banner = $1 WHERE id = $2 RETURNING *",
+            [cloudinaryResult.secure_url, userId]
+        );
+
+        res.status(200).json({
+            message: "Banner uploaded and user updated successfully",
+            user: updateResult.rows[0]
+        });
+    } catch (error) {
+        console.error("Upload error:", error);
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
+
+// Delete Profile Image (Registered Users)
+const deleteProfileBanner = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    try {
+        const userResult = await pool.query(
+            "SELECT * FROM users WHERE id = $1",
+            [userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            res.status(403).json({ message: "Unauthorized to delete image for this user" });
+            return;
+        }
+
+        const imageResult = await pool.query(
+            "SELECT profile_banner FROM users WHERE id = $1", [userId]
+        )
+
+        if (imageResult.rows.length === 0) {
+            res.status(200).json({ message: "Image not found" })
+            return;
+        }
+
+        const publicId = extractPublicId(imageResult.rows[0].profile_banner);
+        if (publicId) {
+            await cloudinary.uploader.destroy(publicId);
+        }
+
+        await pool.query("UPDATE users SET profile_banner = NULL WHERE id = $1", [userId]);
+
+        res.status(200).json({ message: "Image deleted successfully" });
+
+    } catch (error) {
+        console.error("Delete image error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 // Delete Own Account (Registered Users)
 const deleteAccount = async (req: Request, res: Response) => {
     const userId = req.user!.id;
@@ -224,4 +329,4 @@ const deleteAccount = async (req: Request, res: Response) => {
     }
 };
 
-export { viewUserProfile, viewProfile, editProfile, editPassword, uploadProfileImage, deleteProfileImage, deleteAccount };
+export { viewUserProfile, viewProfile, editProfile, editPassword, uploadProfileImage, uploadProfileBanner, deleteProfileImage, deleteProfileBanner, deleteAccount };

@@ -92,7 +92,7 @@ const searchPosts = async (req: Request, res: Response) => {
                 u.gender AS author_gender
             FROM posts p
             LEFT JOIN users u ON p.user_id = u.id
-            WHERE p.title ILIKE $1 OR p.content ILIKE $1
+            WHERE p.title ILIKE $1
             ORDER BY p.created_at DESC`,
             [`%${query}%`]);
         res.status(200).json({ posts: searchResult.rows });
@@ -271,4 +271,28 @@ const deletePost = async (req: Request<{ postId: string }, {}, {}>, res: Respons
     }
 }
 
-export { viewAllPosts, viewPost, searchPosts, viewPostsByCategory, viewAllOwnPosts, createPost, deletePost };
+const viewUserPosts = async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+
+    try {
+        const result = await pool.query(`
+            SELECT p.* ,
+                u.id AS author_id,
+                u.username AS author_username,
+                u.profile_image AS author_profile_image,
+                u.is_admin AS author_is_admin,
+                u.registration_date AS author_registration_date,
+                u.gender AS author_gender
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE u.id = $1
+            ORDER BY p.created_at DESC
+            `, [userId]);
+        res.status(200).json({ publicUserPosts: result.rows });
+    } catch (error) {
+        console.error("Error fetching posts:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export { viewAllPosts, viewPost, searchPosts, viewPostsByCategory, viewAllOwnPosts, createPost, deletePost, viewUserPosts };

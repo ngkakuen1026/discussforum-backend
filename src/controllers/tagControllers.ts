@@ -14,6 +14,19 @@ const getTags = async (req: Request, res: Response) => {
     }
 };
 
+const getPendingTags = async (req: Request, res: Response) => {
+    try {
+        const pendingTagsResult = await pool.query("SELECT * FROM tags WHERE approved = FALSE");
+        res.status(200).json({
+            message: "Pending Tag fetched successfully",
+            pendingTags: pendingTagsResult.rows
+        });
+    } catch (error) {
+        console.error("Error fetching tags:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
 const getPostTags = async (req: Request, res: Response) => {
     const { postId } = req.params;
 
@@ -32,4 +45,4 @@ const getPostTags = async (req: Request, res: Response) => {
     }
 };
 
-export { getTags, getPostTags };
+export { getTags, getPendingTags, getPostTags };

@@ -6,28 +6,15 @@ import { extractUserMentions } from '../utils/extractUserMentions';
 
 const viewComments = async (req: Request<{ postId: string }>, res: Response) => {
     const postId = Number(req.params.postId);
-    const userId = req.user?.id;
 
     try {
         const postResult = await pool.query("SELECT id FROM posts WHERE id = $1", [postId]);
         if (postResult.rows.length === 0) {
             return res.status(404).json({ message: "Post not found" });
         }
-        const blockedUserIds: number[] = userId
-            ? (
-                await pool.query("SELECT blocked_id FROM user_blocked WHERE blocker_id = $1", [
-                    userId,
-                ])
-            ).rows.map((r) => r.blocked_id)
-            : [];
 
         const whereConditions = ["c.post_id = $1"];
         const queryParams: any[] = [postId];
-
-        if (blockedUserIds.length > 0) {
-            whereConditions.push(`c.user_id NOT IN (${blockedUserIds.map((_, i) => `$${i + 2}`).join(",")})`);
-            queryParams.push(...blockedUserIds);
-        }
 
         const commentsResult = await pool.query(
             `
@@ -201,4 +188,18 @@ const replyToComment = async (req: Request<{ commentId: string }, {}, CreateRepl
     }
 };
 
-export { viewComments, createComment, replyToComment };
+const viewUserCommentLength = async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+
+    try {
+        const result = await pool.query(`
+            SELECT COUNT(user_id) AS comment_count FROM comments WHERE user_id = $1;
+        `, [userId]);
+        res.status(200).json({ publicUserCommentCount: result.rows });
+    } catch (error) {
+        console.error("Error fetching public user comment count:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export { viewComments, createComment, replyToComment, viewUserCommentLength };

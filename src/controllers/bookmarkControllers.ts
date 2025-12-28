@@ -12,6 +12,7 @@ const viewBookmarks = async (req: Request, res: Response) => {
                 p.id AS post_id,
                 p.title AS post_title,
                 p.views AS post_view,
+                p.pending_tag_name AS post_pending_tag_name,
                 u.username AS author_username,
                 u.profile_image AS author_profile_image,
                 u.is_admin AS author_is_admin,

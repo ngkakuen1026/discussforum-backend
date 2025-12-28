@@ -3,7 +3,6 @@ import pool from '../db/db';
 import { createNotification } from '../utils/notificationUtils';
 
 const viewOwnFollowers = async (req: Request, res: Response) => {
-    console.log("GET /api/v1/user-following/followers/me called");
     const userId = req.user!.id;
     try {
         const result = await pool.query(
@@ -27,11 +26,15 @@ const viewOwnFollowing = async (req: Request, res: Response) => {
     try {
         const result = await pool.query(
             `SELECT 
-                users.id, 
-                users.username 
-            FROM users 
-            JOIN user_following ON users.id = user_following.followed_id 
-            WHERE user_following.follower_id = $1`,
+                u.id as following_user_id, 
+                u.username as following_user_username,
+                u.profile_image AS following_user_profile_image,
+                u.is_admin AS following_user_is_admin,
+                u.registration_date AS following_user_registration_date,
+                u.gender AS following_user_gender
+            FROM users u
+            JOIN user_following uf ON u.id = uf.followed_id 
+            WHERE uf.follower_id = $1`,
             [userId]
         );
         res.status(200).json({ followingCount: result.rows.length, following: result.rows });
@@ -44,6 +47,16 @@ const viewOwnFollowing = async (req: Request, res: Response) => {
 const followUser = async (req: Request, res: Response) => {
     const followerId = req.user!.id;
     const { followedId } = req.body;
+
+    const existingUser = await pool.query(
+        'SELECT * FROM users WHERE id = $1',
+        [followedId]
+    );
+
+    if (existingUser.rows.length === 0) {
+        res.status(404).json({ message: 'User not found' });
+        return;
+    }
 
     if (followerId === followedId) {
         return res.status(400).json({ message: 'You cannot follow yourself' });
@@ -127,4 +140,46 @@ const unfollowUser = async (req: Request, res: Response) => {
     }
 };
 
-export { viewOwnFollowers, viewOwnFollowing, followUser, unfollowUser };
+const viewPublicUserFollowers = async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    try {
+        const result = await pool.query(
+            `SELECT 
+                users.id, 
+                users.username 
+            FROM users 
+            JOIN user_following ON users.id = user_following.follower_id 
+            WHERE user_following.followed_id = $1`,
+            [userId]
+        );
+        res.status(200).json({ followersCount: result.rows.length, followers: result.rows });
+    } catch (error) {
+        console.error('Error fetching followers:', error);
+        res.status(500).json({ error: 'Failed to fetch followers' });
+    }
+}
+
+const viewPublicUserFollowing = async (req: Request, res: Response) => {
+    const userId = Number(req.params.userId);
+    try {
+        const result = await pool.query(
+            `SELECT 
+                u.id as following_user_id, 
+                u.username as following_user_username,
+                u.profile_image AS following_user_profile_image,
+                u.is_admin AS following_user_is_admin,
+                u.registration_date AS following_user_registration_date,
+                u.gender AS following_user_gender
+            FROM users u
+            JOIN user_following uf ON u.id = uf.followed_id 
+            WHERE uf.follower_id = $1`,
+            [userId]
+        );
+        res.status(200).json({ followingCount: result.rows.length, following: result.rows });
+    } catch (error) {
+        console.error('Error fetching following users:', error);
+        res.status(500).json({ error: 'Failed to fetch following users' });
+    }
+}
+
+export { viewOwnFollowers, viewOwnFollowing, followUser, unfollowUser, viewPublicUserFollowers, viewPublicUserFollowing };
