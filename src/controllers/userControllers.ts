@@ -11,19 +11,70 @@ const viewUserProfile = async (req: Request, res: Response) => {
     const userId = Number(req.params.userId);
 
     try {
-        const result = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
-        if (result.rows.length === 0) {
-            res.status(404).json({ message: "User not found" });
-            return;
-        }
-        const user = result.rows.map(({ password_hash, ...rest }) => rest);
-        res.status(200).json({ user: user[0] });
+        const result = await pool.query(`
+      SELECT 
+        u.id, 
+        u.username, 
+        u.first_name, 
+        u.last_name, 
+        u.email,
+        u.phone, 
+        u.gender, 
+        u.bio,
+        u.profile_image, 
+        u.profile_banner, 
+        u.registration_date, 
+        u.is_admin,
+        u.last_login_at,
+        
+        -- Visibility flags
+        v.show_full_name,
+        v.show_email,
+        v.show_phone,
+        v.show_gender,
+        v.show_bio,
+        v.show_registration_date,
+        v.show_last_login_at,
+        v.visibility_mode
+        
+      FROM users u
+      LEFT JOIN user_visibility v ON u.id = v.user_id
+      WHERE u.id = $1
+    `, [userId]);
 
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const user = result.rows[0];
+
+        const safeUser = {
+            id: user.id,
+            username: user.username,
+            profile_image: user.profile_image,
+            profile_banner: user.profile_banner,
+            is_admin: user.is_admin,
+
+            // Visibility Mode
+            visibility_mode: user.visibility_mode, 
+
+            // Optional Showing Fields
+            first_name: user.show_full_name ? user.first_name : null,
+            last_name: user.show_full_name ? user.last_name : null,
+            email: user.show_email ? user.email : null,
+            phone: user.show_phone ? user.phone : null,
+            gender: user.show_gender ? user.gender : null,
+            bio: user.show_bio ? user.bio : null,
+            registration_date: user.show_registration_date ? user.registration_date : null,
+            last_login_at: user.show_last_login_at ? user.last_login_at : null,
+        };
+
+        res.status(200).json({ user: safeUser });
     } catch (error) {
         console.error("Error fetching user profile:", error);
         res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 
 // View Own Profile (Registered Users)
 const viewProfile = async (req: Request, res: Response) => {
@@ -62,8 +113,54 @@ const editProfile = async (req: Request<{}, {}, EditProfileRequestBody>, res: Re
             last_name = user.last_name,
             phone = user.phone,
             gender = user.gender,
-            bio = user.bio
+            bio = user.bio,
+            currentPassword
         } = req.body;
+
+        let emailChanged = false;
+
+        if (email !== user.email) {
+            if (!currentPassword) {
+                return res.status(400).json({
+                    message: "Current password is required to change email",
+                    field: "currentPassword",
+                });
+            }
+
+            const passwordMatch = await bcrypt.compare(currentPassword, user.password_hash);
+            if (!passwordMatch) {
+                return res.status(401).json({
+                    message: "Incorrect current password",
+                    field: "currentPassword",
+                });
+            }
+
+            const emailCheck = await pool.query(
+                "SELECT id FROM users WHERE email = $1 AND id != $2",
+                [email, userId]
+            );
+            if (emailCheck.rows.length > 0) {
+                return res.status(409).json({
+                    message: "This email is already in use by another account",
+                    field: "email",
+                });
+            }
+
+            emailChanged = true;
+        }
+
+        if (username !== user.username) {
+            const usernameCheck = await pool.query(
+                "SELECT id FROM users WHERE username = $1 AND id != $2",
+                [username, userId]
+            );
+            if (usernameCheck.rows.length > 0) {
+                return res.status(409).json({
+                    message: "Username is already taken",
+                    field: "username",
+                });
+            }
+        }
 
         const editResult = await pool.query(
             "UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4, phone = $5, gender = $6, bio = $7 WHERE id = $8 RETURNING *",
@@ -82,20 +179,28 @@ const editPassword = async (req: Request<{}, {}, EditPasswordRequestBody>, res: 
     const userId = req.user!.id;
 
     try {
-        const { oldPassword, newPassword } = req.body;
+        const { oldPassword, newPassword, confirmPassword } = req.body;
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({
+                message: "New password and confirm password do not match",
+                field: "confirmPassword",
+            });
+        }
 
         const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
         if (userResult.rows.length === 0) {
-            res.status(404).json({ message: "User not found" });
-            return;
+            return res.status(404).json({ message: "User not found" });
         }
 
         const user = userResult.rows[0];
 
         const isPasswordMatch = await bcrypt.compare(oldPassword, user.password_hash);
         if (!isPasswordMatch) {
-            res.status(400).json({ message: "Old password is incorrect" });
-            return;
+            return res.status(400).json({
+                message: "Old password is incorrect",
+                field: "oldPassword",
+            });
         }
 
         const saltRounds = 10;
@@ -108,7 +213,7 @@ const editPassword = async (req: Request<{}, {}, EditPasswordRequestBody>, res: 
 
         res.status(200).json({ message: "Password updated successfully" });
     } catch (error) {
-        console.error(error);
+        console.error("Password update error:", error);
         res.status(500).json({ message: "Internal Server Error" });
     }
 };

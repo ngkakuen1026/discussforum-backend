@@ -7,11 +7,15 @@ const viewOwnFollowers = async (req: Request, res: Response) => {
     try {
         const result = await pool.query(
             `SELECT 
-                users.id, 
-                users.username 
-            FROM users 
-            JOIN user_following ON users.id = user_following.follower_id 
-            WHERE user_following.followed_id = $1`,
+                u.id as follower_user_id, 
+                u.username as follower_user_username,
+                u.profile_image AS follower_user_profile_image,
+                u.is_admin AS follower_user_is_admin,
+                u.registration_date AS follower_user_registration_date,
+                u.gender AS follower_user_gender
+            FROM users u
+            JOIN user_following uf ON u.id = uf.follower_id 
+            WHERE uf.followed_id = $1`,
             [userId]
         );
         res.status(200).json({ followersCount: result.rows.length, followers: result.rows });
@@ -140,6 +144,45 @@ const unfollowUser = async (req: Request, res: Response) => {
     }
 };
 
+const removeFollower = async (req: Request, res: Response) => {
+    const followedId = req.user!.id;
+    const { followerId } = req.body;
+
+    try {
+        const existingUser = await pool.query(
+            'SELECT * FROM users WHERE id = $1',
+            [followerId]
+        );
+
+        if (existingUser.rows.length === 0) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+
+        }
+
+        const existingFollow = await pool.query(
+            'SELECT * FROM user_following WHERE follower_id = $1 AND followed_id = $2',
+            [followerId, followedId]
+        );
+
+        if (existingFollow.rows.length === 0) {
+            res.status(400).json({ message: 'This user is not following you' });
+            return;
+        }
+
+        await pool.query(
+            'DELETE FROM user_following WHERE follower_id = $1 AND followed_id = $2',
+            [followerId, followedId]
+        );
+
+        res.status(200).json({ message: 'Follower removed successfully' });
+
+    } catch (error) {
+        console.error('Error fetching followers:', error);
+        res.status(500).json({ error: 'Failed to remove followers' });
+    }
+}
+
 const viewPublicUserFollowers = async (req: Request, res: Response) => {
     const userId = Number(req.params.userId);
     try {
@@ -182,4 +225,4 @@ const viewPublicUserFollowing = async (req: Request, res: Response) => {
     }
 }
 
-export { viewOwnFollowers, viewOwnFollowing, followUser, unfollowUser, viewPublicUserFollowers, viewPublicUserFollowing };
+export { viewOwnFollowers, viewOwnFollowing, followUser, unfollowUser, removeFollower, viewPublicUserFollowers, viewPublicUserFollowing };

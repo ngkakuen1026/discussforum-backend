@@ -2,6 +2,7 @@ import express from 'express';
 import { deleteAccount, deleteProfileBanner, deleteProfileImage, editPassword, editProfile, uploadProfileBanner, uploadProfileImage, viewProfile, viewUserProfile } from '../controllers/userControllers';
 import { isAuthenticated } from '../middleware/auth';
 import upload from '../middleware/multer';
+import { changeVisibility, getVisibility, resetDefaultVisibility } from '../controllers/userVisibilityControllers';
 
 const router = express.Router();
 
@@ -17,5 +18,10 @@ router.post("/profile/me/profile-image", isAuthenticated, upload.single("profile
 router.post("/profile/me/profile-banner", isAuthenticated, upload.single("profile_banner"), uploadProfileBanner);
 router.delete("/profile/me/profile-image", isAuthenticated, deleteProfileImage);
 router.delete("/profile/me/profile-banner", isAuthenticated, deleteProfileBanner);
+
+// Protected Routes for visibility (Registered Users)
+router.get("/profile/visibility", isAuthenticated, getVisibility);
+router.post("/profile/visibility/reset", isAuthenticated, resetDefaultVisibility);
+router.patch("/profile/visibility", isAuthenticated, changeVisibility);
 
 export default router;

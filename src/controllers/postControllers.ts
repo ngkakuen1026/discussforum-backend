@@ -295,4 +295,52 @@ const viewUserPosts = async (req: Request, res: Response) => {
     }
 };
 
-export { viewAllPosts, viewPost, searchPosts, viewPostsByCategory, viewAllOwnPosts, createPost, deletePost, viewUserPosts };
+const viewFollowingFeed = async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 15;
+    const offset = (page - 1) * limit;
+
+    try {
+        const followingResult = await pool.query(
+            `SELECT followed_id FROM user_following WHERE follower_id = $1`,
+            [userId]
+        );
+
+        const followedIds = followingResult.rows.map(row => row.followed_id);
+
+        if (followedIds.length === 0) {
+            return res.status(200).json({ posts: [], total: 0 });
+        }
+
+        const postsResult = await pool.query(
+            `SELECT p.*, u.username AS author_username, u.profile_image AS author_profile_image,
+              u.is_admin AS author_is_admin, u.gender AS author_gender,
+              u.registration_date AS author_registration_date
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.user_id = ANY($1::int[])
+            ORDER BY p.created_at DESC
+            LIMIT $2 OFFSET $3`,
+            [followedIds, limit, offset]
+        );
+
+
+        const countResult = await pool.query(
+            `SELECT COUNT(*) FROM posts WHERE user_id = ANY($1::int[])`,
+            [followedIds]
+        );
+
+        res.status(200).json({
+            posts: postsResult.rows,
+            total: Number(countResult.rows[0].count),
+            page,
+            limit,
+        });
+    } catch (error) {
+        console.error("Error fetching following feed:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export { viewAllPosts, viewPost, searchPosts, viewPostsByCategory, viewAllOwnPosts, createPost, deletePost, viewUserPosts, viewFollowingFeed };

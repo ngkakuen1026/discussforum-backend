@@ -6,9 +6,11 @@ export interface EditProfileRequestBody {
     phone?: string;
     gender?: string;
     bio?: string;
+    currentPassword: string;
 }
 
 export interface EditPasswordRequestBody {
     oldPassword: string;
     newPassword: string;
+    confirmPassword: string;
 }

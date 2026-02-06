@@ -204,6 +204,12 @@ const loginUser = async (req: Request<{}, {}, LoginRequestBody>, res: Response) 
             return;
         }
 
+        // For user last login time
+        await pool.query(
+            "UPDATE users SET last_login_at = NOW() WHERE id = $1",
+            [user.id]
+        );
+
         const { id, username: userUsername, email: userEmail, is_admin: isAdmin } = user;
 
         const accessToken = generateAccessToken({ id, userUsername, userEmail, isAdmin });

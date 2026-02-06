@@ -1,6 +1,6 @@
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth';
-import { createPost, deletePost, searchPosts, viewAllOwnPosts, viewAllPosts, viewPost, viewPostsByCategory, viewUserPosts } from '../controllers/postControllers';
+import { createPost, deletePost, searchPosts, viewAllOwnPosts, viewAllPosts, viewFollowingFeed, viewPost, viewPostsByCategory, viewUserPosts } from '../controllers/postControllers';
 import { getVotes, votePost } from '../controllers/postVoteControllers';
 import attachUserIfExists from '../middleware/attachUserIfExists';
 import { logPostHistory } from '../middleware/postHistory';
@@ -19,7 +19,7 @@ router.get("/votes/:postId", attachUserIfExists, getVotes);
 router.get("/all-posts/me", isAuthenticated, viewAllOwnPosts);
 router.post("/post", isAuthenticated, createPost);
 router.delete("/post/:postId", isAuthenticated, deletePost);
-
+router.get("/following-feed", isAuthenticated, viewFollowingFeed);
 
 router.get("/all-posts/user/:userId", viewUserPosts);
 router.get("/all-posts/category/:categoryId", viewPostsByCategory)
